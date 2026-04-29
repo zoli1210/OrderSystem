@@ -168,3 +168,4 @@ C:\Users\DIZOPAPP\source\repos\OrderSystem\OrderSystem\obj\Debug\net8.0\staticwe
 C:\Users\DIZOPAPP\source\repos\OrderSystem\OrderSystem\bin\Debug\net8.0\FluentValidation.dll
 C:\Users\DIZOPAPP\source\repos\OrderSystem\OrderSystem\bin\Debug\net8.0\FluentValidation.AspNetCore.dll
 C:\Users\DIZOPAPP\source\repos\OrderSystem\OrderSystem\bin\Debug\net8.0\FluentValidation.DependencyInjectionExtensions.dll
+C:\Users\DIZOPAPP\source\repos\OrderSystem\OrderSystem\obj\Debug\net8.0\OrderSystem.sourcelink.json

@@ -1,0 +1,33 @@
+.vs/
+[Bb]in/
+[Ob]j/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+*.mdf
+*.ldf
+*.sdf
+*.db
+*.db-shm
+*.db-wal
+
+/Migrations/*.cs
+/Migrations/MyContextModelSnapshot.cs
+
+## [ .NET Core / .NET 5+ ]
+project.lock.json
+project.fragment.lock.json
+artifacts/
+out/
+
+## [ User-specific settings ]
+.idea/
+.vscode/
+appsettings.Development.json
+appsettings.Local.json
+
+## [ NuGet Packages ]
+*.nupkg
+packages/
