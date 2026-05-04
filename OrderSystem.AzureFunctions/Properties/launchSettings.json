@@ -1,0 +1,9 @@
+{
+  "profiles": {
+    "OrderSystem.AzureFunctions": {
+      "commandName": "Project",
+      "commandLineArgs": "--port 7140",
+      "launchBrowser": false
+    }
+  }
+}
