@@ -8,7 +8,13 @@ public class OrderResponse
 
     public string CustomerName { get; set; } = string.Empty;
 
+    public string CustomerEmail { get; set; } = string.Empty;
+
     public decimal TotalAmount { get; set; }
+
+    public string Currency { get; set; } = string.Empty;
+
+    public string? Description { get; set; }
 
     public OrderStatus Status { get; set; }
 

@@ -1,4 +1,6 @@
-﻿public class CreateOrderRequest
+﻿namespace OrderSystem.Modules.Orders.DTOs;
+
+public class CreateOrderRequest
 {
     public string CustomerName { get; set; } = string.Empty;
 

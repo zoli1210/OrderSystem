@@ -13,18 +13,29 @@ public class OrderService : IOrderService
     private readonly IPaymentService _paymentService;
     private readonly IOrderMessageSender _orderMessageSender;
 
-    public OrderService(IOrderRepository orderRepository, IPaymentService paymentService, IOrderMessageSender orderMessageSender)
+    public OrderService(
+        IOrderRepository orderRepository,
+        IPaymentService paymentService,
+        IOrderMessageSender orderMessageSender
+    )
     {
         _orderRepository = orderRepository;
         _paymentService = paymentService;
         _orderMessageSender = orderMessageSender;
     }
 
-    public async Task<OrderResponse> CreateAsync(CreateOrderRequest request, CancellationToken cancellationToken)
+    public async Task<OrderResponse> CreateAsync(
+        CreateOrderRequest request,
+        CancellationToken cancellationToken
+    )
     {
         var order = new Order(
             request.CustomerName,
-            request.TotalAmount);
+            request.CustomerEmail,
+            request.TotalAmount,
+            request.Currency,
+            request.Description
+        );
 
         await _orderRepository.AddAsync(order, cancellationToken);
         await _orderRepository.SaveChangesAsync(cancellationToken);
@@ -51,13 +62,15 @@ public class OrderService : IOrderService
         //await _orderRepository.UpdateAsync(order, cancellationToken);
         //await _orderRepository.SaveChangesAsync(cancellationToken);
 
-        await _orderMessageSender.SendOrderCreatedAsync( new OrderCreatedMessage
-        {
-            OrderId = order.Id,
-            TotalAmount = order.TotalAmount,
-            CustomerEmail = request.CustomerEmail
-        },
-        cancellationToken);
+        await _orderMessageSender.SendOrderCreatedAsync(
+            new OrderCreatedMessage
+            {
+                OrderId = order.Id,
+                TotalAmount = order.TotalAmount,
+                CustomerEmail = order.CustomerEmail,
+            },
+            cancellationToken
+        );
 
         return MapToResponse(order);
     }
@@ -80,9 +93,12 @@ public class OrderService : IOrderService
         {
             Id = order.Id,
             CustomerName = order.CustomerName,
+            CustomerEmail = order.CustomerEmail,
             TotalAmount = order.TotalAmount,
+            Currency = order.Currency,
+            Description = order.Description,
             Status = order.Status,
-            CreatedAtUtc = order.CreatedAtUtc
+            CreatedAtUtc = order.CreatedAtUtc,
         };
     }
 }
