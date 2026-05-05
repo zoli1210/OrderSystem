@@ -37,11 +37,8 @@ builder.Services.AddScoped<IEmailService, EmailService>();
 
 // Messaging
 builder.Services.AddScoped<IQueuePublisher, QueuePublisher>();
-builder.Services.AddSingleton<InMemoryOrderMessageQueue>();
 builder.Services.AddScoped<IOrderMessageSender, AzureServiceBusOrderMessageSender>();
-
-//builder.Services.AddHostedService<PaymentBackgroundService>();
-//builder.Services.AddSingleton<InMemoryDeadLetterQueue>();
+builder.Services.AddScoped<IDeadLetterService, AzureServiceBusDeadLetterService>();
 
 // Azure
 builder.Services.AddSingleton(sp =>
