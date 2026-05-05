@@ -1,26 +1,20 @@
-using System.Text.Json;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging;
-using OrderSystem.Infrastructure.Messaging.Messages;
-using OrderSystem.Infrastructure.Persistence.Repositories;
-using OrderSystem.Modules.Payments.Services;
+using OrderSystem.AzureFunctions.Services;
 
 namespace OrderSystem.AzureFunctions;
 
 public class PaymentProcessorFunction
 {
-    private readonly IOrderRepository _orderRepository;
-    private readonly IPaymentService _paymentService;
+    private readonly IPaymentProcessor _paymentProcessor;
     private readonly ILogger<PaymentProcessorFunction> _logger;
 
     public PaymentProcessorFunction(
-        IOrderRepository orderRepository,
-        IPaymentService paymentService,
+        IPaymentProcessor paymentProcessor,
         ILogger<PaymentProcessorFunction> logger
     )
     {
-        _orderRepository = orderRepository;
-        _paymentService = paymentService;
+        _paymentProcessor = paymentProcessor;
         _logger = logger;
     }
 
@@ -31,48 +25,8 @@ public class PaymentProcessorFunction
         CancellationToken cancellationToken
     )
     {
-        var orderMessage = JsonSerializer.Deserialize<OrderCreatedMessage>(message);
+        _logger.LogWarning("PaymentProcessorFunction triggered.");
 
-        if (orderMessage is null)
-        {
-            _logger.LogError("Invalid order message received.");
-            return;
-        }
-
-        var order = await _orderRepository.GetByIdAsync(orderMessage.OrderId, cancellationToken);
-
-        if (order is null)
-        {
-            _logger.LogError("Order not found. OrderId: {OrderId}", orderMessage.OrderId);
-            return;
-        }
-
-        order.SetPaymentProcessing();
-        await _orderRepository.UpdateAsync(order, cancellationToken);
-        await _orderRepository.SaveChangesAsync(cancellationToken);
-
-        var paymentSuccessful = await _paymentService.ProcessPaymentAsync(
-            order.Id,
-            order.TotalAmount,
-            cancellationToken
-        );
-
-        if (paymentSuccessful)
-        {
-            order.SetPaid();
-        }
-        else
-        {
-            order.SetPaymentFailed();
-        }
-
-        await _orderRepository.UpdateAsync(order, cancellationToken);
-        await _orderRepository.SaveChangesAsync(cancellationToken);
-
-        _logger.LogWarning(
-            "Payment processed by Azure Function. OrderId: {OrderId}, Status: {Status}",
-            order.Id,
-            order.Status
-        );
+        await _paymentProcessor.ProcessAsync(message, cancellationToken);
     }
 }

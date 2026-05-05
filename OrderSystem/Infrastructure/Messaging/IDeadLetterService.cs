@@ -7,4 +7,6 @@ public interface IDeadLetterService
     Task<IReadOnlyList<DeadLetterMessageResponse>> GetDeadLettersAsync(
         CancellationToken cancellationToken
     );
+
+    Task<bool> RetryDeadLetterAsync(long sequenceNumber, CancellationToken cancellationToken);
 }

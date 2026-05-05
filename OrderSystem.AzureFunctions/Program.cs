@@ -1,7 +1,7 @@
-﻿using Microsoft.Azure.Functions.Worker;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using OrderSystem.AzureFunctions.Services;
 using OrderSystem.Infrastructure.Persistence;
 using OrderSystem.Infrastructure.Persistence.Repositories;
 using OrderSystem.Modules.Payments.Services;
@@ -25,6 +25,7 @@ var host = new HostBuilder()
                 options.UseSqlServer(connectionString);
             });
 
+            services.AddScoped<IPaymentProcessor, PaymentProcessor>();
             services.AddScoped<IOrderRepository, OrderRepository>();
             services.AddScoped<IPaymentService, PaymentService>();
         }
