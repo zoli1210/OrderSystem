@@ -40,23 +40,49 @@ public class Order
         CreatedAtUtc = DateTime.UtcNow;
     }
 
-    public void SetPaymentProcessing()
+    public void StartPaymentProcessing()
     {
+        if (Status != OrderStatus.Pending)
+        {
+            throw new InvalidOperationException(
+                $"Payment processing cannot be started from status {Status}."
+            );
+        }
+
         Status = OrderStatus.PaymentProcessing;
     }
 
-    public void SetPaid()
+    public void MarkAsPaid()
     {
+        if (Status != OrderStatus.PaymentProcessing)
+        {
+            throw new InvalidOperationException(
+                $"Order cannot be marked as paid from status {Status}."
+            );
+        }
+
         Status = OrderStatus.Paid;
     }
 
-    public void SetPaymentFailed()
+    public void MarkPaymentAsFailed()
     {
+        if (Status != OrderStatus.PaymentProcessing)
+        {
+            throw new InvalidOperationException(
+                $"Payment cannot be marked as failed from status {Status}."
+            );
+        }
+
         Status = OrderStatus.PaymentFailed;
     }
 
     public void Cancel()
     {
+        if (Status is OrderStatus.Paid or OrderStatus.PaymentProcessing or OrderStatus.Cancelled)
+        {
+            throw new InvalidOperationException($"Order cannot be cancelled from status {Status}.");
+        }
+
         Status = OrderStatus.Cancelled;
     }
 }

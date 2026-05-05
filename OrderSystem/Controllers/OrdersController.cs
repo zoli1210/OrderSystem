@@ -16,18 +16,21 @@ public class OrdersController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<ActionResult<OrderResponse>> Create( [FromBody] CreateOrderRequest request, CancellationToken cancellationToken)
+    public async Task<ActionResult<OrderResponse>> Create(
+        [FromBody] CreateOrderRequest request,
+        CancellationToken cancellationToken
+    )
     {
         var response = await _orderService.CreateAsync(request, cancellationToken);
 
-        return CreatedAtAction(
-            nameof(GetById),
-            new { id = response.Id },
-            response);
+        return CreatedAtAction(nameof(GetById), new { id = response.Id }, response);
     }
 
     [HttpGet("{id:guid}")]
-    public async Task<ActionResult<OrderResponse>> GetById(Guid id, CancellationToken cancellationToken)
+    public async Task<ActionResult<OrderResponse>> GetById(
+        Guid id,
+        CancellationToken cancellationToken
+    )
     {
         var response = await _orderService.GetByIdAsync(id, cancellationToken);
 
@@ -35,6 +38,14 @@ public class OrdersController : ControllerBase
         {
             return NotFound();
         }
+
+        return Ok(response);
+    }
+
+    [HttpPost("{id:guid}/cancel")]
+    public async Task<IActionResult> Cancel(Guid id, CancellationToken cancellationToken)
+    {
+        var response = await _orderService.CancelAsync(id, cancellationToken);
 
         return Ok(response);
     }

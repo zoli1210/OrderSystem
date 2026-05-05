@@ -40,28 +40,6 @@ public class OrderService : IOrderService
         await _orderRepository.AddAsync(order, cancellationToken);
         await _orderRepository.SaveChangesAsync(cancellationToken);
 
-        //order.SetPaymentProcessing();
-
-        //await _orderRepository.UpdateAsync(order, cancellationToken);
-        //await _orderRepository.SaveChangesAsync(cancellationToken);
-
-        //var paymentSuccessful = await _paymentService.ProcessPaymentAsync(
-        //    order.Id,
-        //    order.TotalAmount,
-        //    cancellationToken);
-
-        //if (paymentSuccessful)
-        //{
-        //    order.SetPaid();
-        //}
-        //else
-        //{
-        //    order.SetPaymentFailed();
-        //}
-
-        //await _orderRepository.UpdateAsync(order, cancellationToken);
-        //await _orderRepository.SaveChangesAsync(cancellationToken);
-
         await _orderMessageSender.SendOrderCreatedAsync(
             new OrderCreatedMessage
             {
@@ -100,5 +78,22 @@ public class OrderService : IOrderService
             Status = order.Status,
             CreatedAtUtc = order.CreatedAtUtc,
         };
+    }
+
+    public async Task<OrderResponse> CancelAsync(Guid id, CancellationToken cancellationToken)
+    {
+        var order = await _orderRepository.GetByIdAsync(id, cancellationToken);
+
+        if (order is null)
+        {
+            throw new NotFoundException("Order not found");
+        }
+
+        order.Cancel();
+
+        await _orderRepository.UpdateAsync(order, cancellationToken);
+        await _orderRepository.SaveChangesAsync(cancellationToken);
+
+        return MapToResponse(order);
     }
 }
