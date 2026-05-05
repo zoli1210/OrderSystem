@@ -33,12 +33,13 @@ builder.Services.AddScoped<IOrderRepository, OrderRepository>();
 // Module services
 builder.Services.AddScoped<IOrderService, OrderService>();
 builder.Services.AddScoped<IPaymentService, PaymentService>();
-builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddScoped<IEmailService, FakeEmailService>();
 
 // Messaging
 builder.Services.AddScoped<IQueuePublisher, QueuePublisher>();
 builder.Services.AddScoped<IOrderMessageSender, AzureServiceBusOrderMessageSender>();
 builder.Services.AddScoped<IDeadLetterService, AzureServiceBusDeadLetterService>();
+builder.Services.AddScoped<IEmailMessageSender, AzureServiceBusEmailMessageSender>();
 
 // Azure
 builder.Services.AddSingleton(sp =>

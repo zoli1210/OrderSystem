@@ -1,5 +1,6 @@
 ﻿using System.Text.Json;
 using Microsoft.Extensions.Logging;
+using OrderSystem.Infrastructure.Messaging;
 using OrderSystem.Infrastructure.Messaging.Messages;
 using OrderSystem.Infrastructure.Persistence.Repositories;
 using OrderSystem.Modules.Payments.Services;
@@ -11,15 +12,18 @@ public class PaymentProcessor : IPaymentProcessor
     private readonly IOrderRepository _orderRepository;
     private readonly IPaymentService _paymentService;
     private readonly ILogger<PaymentProcessor> _logger;
+    private readonly IEmailMessageSender _emailMessageSender;
 
     public PaymentProcessor(
         IOrderRepository orderRepository,
         IPaymentService paymentService,
+        IEmailMessageSender emailMessageSender,
         ILogger<PaymentProcessor> logger
     )
     {
         _orderRepository = orderRepository;
         _paymentService = paymentService;
+        _emailMessageSender = emailMessageSender;
         _logger = logger;
     }
 
@@ -56,6 +60,17 @@ public class PaymentProcessor : IPaymentProcessor
             if (paymentSuccessful)
             {
                 order.SetPaid();
+
+                await _emailMessageSender.SendEmailNotificationAsync(
+                    new EmailNotificationMessage
+                    {
+                        OrderId = order.Id,
+                        CustomerEmail = orderMessage.CustomerEmail,
+                        Subject = "Order payment successful",
+                        Body = $"Your order {order.Id} has been paid successfully.",
+                    },
+                    cancellationToken
+                );
             }
             else
             {

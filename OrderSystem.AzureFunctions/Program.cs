@@ -1,9 +1,13 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Azure.Messaging.ServiceBus;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using OrderSystem.AzureFunctions.Services;
+using OrderSystem.Infrastructure.Messaging;
 using OrderSystem.Infrastructure.Persistence;
 using OrderSystem.Infrastructure.Persistence.Repositories;
+using OrderSystem.Modules.Email.Services;
 using OrderSystem.Modules.Payments.Services;
 
 var host = new HostBuilder()
@@ -25,9 +29,20 @@ var host = new HostBuilder()
                 options.UseSqlServer(connectionString);
             });
 
+            services.AddSingleton(sp =>
+            {
+                var configuration = sp.GetRequiredService<IConfiguration>();
+                var connectionString = configuration["AzureServiceBusConnection"];
+
+                return new ServiceBusClient(connectionString);
+            });
+
+            services.AddScoped<IEmailService, FakeEmailService>();
+            services.AddScoped<IEmailProcessor, EmailProcessor>();
             services.AddScoped<IPaymentProcessor, PaymentProcessor>();
-            services.AddScoped<IOrderRepository, OrderRepository>();
             services.AddScoped<IPaymentService, PaymentService>();
+            services.AddScoped<IOrderRepository, OrderRepository>();
+            services.AddScoped<IEmailMessageSender, AzureServiceBusEmailMessageSender>();
         }
     )
     .Build();
