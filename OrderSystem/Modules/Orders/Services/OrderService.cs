@@ -77,6 +77,7 @@ public class OrderService : IOrderService
             Description = order.Description,
             Status = order.Status,
             CreatedAtUtc = order.CreatedAtUtc,
+            EmailSentAtUtc = order.EmailSentAtUtc,
         };
     }
 

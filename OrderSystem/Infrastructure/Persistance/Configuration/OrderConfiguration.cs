@@ -14,6 +14,8 @@ public class OrderConfiguration : IEntityTypeConfiguration<Order>
 
         builder.Property(x => x.CustomerEmail).IsRequired().HasMaxLength(320);
 
+        builder.Property(x => x.EmailSentAtUtc);
+
         builder.Property(x => x.TotalAmount).HasPrecision(18, 2);
 
         builder.Property(x => x.Currency).IsRequired().HasMaxLength(3);

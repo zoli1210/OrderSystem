@@ -10,6 +10,8 @@ public class OrderResponse
 
     public string CustomerEmail { get; set; } = string.Empty;
 
+    public DateTime? EmailSentAtUtc { get; set; }
+
     public decimal TotalAmount { get; set; }
 
     public string Currency { get; set; } = string.Empty;

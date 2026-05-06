@@ -10,6 +10,8 @@ public class Order
 
     public string CustomerEmail { get; private set; } = string.Empty;
 
+    public DateTime? EmailSentAtUtc { get; private set; }
+
     public decimal TotalAmount { get; private set; }
 
     public string Currency { get; private set; } = string.Empty;
@@ -84,5 +86,20 @@ public class Order
         }
 
         Status = OrderStatus.Cancelled;
+    }
+
+    public bool IsEmailSent()
+    {
+        return EmailSentAtUtc.HasValue;
+    }
+
+    public void MarkEmailAsSent()
+    {
+        if (EmailSentAtUtc.HasValue)
+        {
+            return;
+        }
+
+        EmailSentAtUtc = DateTime.UtcNow;
     }
 }
