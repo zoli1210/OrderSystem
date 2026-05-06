@@ -44,10 +44,10 @@ public static class AzureFunctionsDependencyInjection
         services.AddScoped<IPaymentService, PaymentService>();
         services.AddScoped<IPaymentProcessor, PaymentProcessor>();
 
+        services.AddScoped<IEmailMessageSender, AzureServiceBusEmailMessageSender>();
+
         services.AddScoped<IEmailService, AzureCommunicationEmailService>();
         services.AddScoped<IEmailProcessor, EmailProcessor>();
-
-        services.AddScoped<IEmailMessageSender, AzureServiceBusEmailMessageSender>();
 
         return services;
     }

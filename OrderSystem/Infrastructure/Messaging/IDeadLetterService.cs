@@ -5,8 +5,13 @@ namespace OrderSystem.Infrastructure.Messaging;
 public interface IDeadLetterService
 {
     Task<IReadOnlyList<DeadLetterMessageResponse>> GetDeadLettersAsync(
+        string queueName,
         CancellationToken cancellationToken
     );
 
-    Task<bool> RetryDeadLetterAsync(long sequenceNumber, CancellationToken cancellationToken);
+    Task<bool> RetryDeadLetterAsync(
+        string queueName,
+        long sequenceNumber,
+        CancellationToken cancellationToken
+    );
 }

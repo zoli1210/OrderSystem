@@ -5,23 +5,27 @@ namespace OrderSystem.Infrastructure.Messaging;
 
 public class AzureServiceBusDeadLetterService : IDeadLetterService
 {
-    private readonly ServiceBusClient _serviceBusClient;
-    private readonly IConfiguration _configuration;
-
-    public AzureServiceBusDeadLetterService(
-        ServiceBusClient serviceBusClient,
-        IConfiguration configuration
+    private static readonly HashSet<string> AllowedQueueNames = new(
+        StringComparer.OrdinalIgnoreCase
     )
     {
+        "order-created",
+        "email-notification",
+    };
+
+    private readonly ServiceBusClient _serviceBusClient;
+
+    public AzureServiceBusDeadLetterService(ServiceBusClient serviceBusClient)
+    {
         _serviceBusClient = serviceBusClient;
-        _configuration = configuration;
     }
 
     public async Task<IReadOnlyList<DeadLetterMessageResponse>> GetDeadLettersAsync(
+        string queueName,
         CancellationToken cancellationToken
     )
     {
-        var queueName = GetQueueName();
+        EnsureQueueNameIsAllowed(queueName);
 
         await using var receiver = _serviceBusClient.CreateReceiver(
             queueName,
@@ -48,11 +52,12 @@ public class AzureServiceBusDeadLetterService : IDeadLetterService
     }
 
     public async Task<bool> RetryDeadLetterAsync(
+        string queueName,
         long sequenceNumber,
         CancellationToken cancellationToken
     )
     {
-        var queueName = GetQueueName();
+        EnsureQueueNameIsAllowed(queueName);
 
         await using var deadLetterReceiver = _serviceBusClient.CreateReceiver(
             queueName,
@@ -63,24 +68,24 @@ public class AzureServiceBusDeadLetterService : IDeadLetterService
             }
         );
 
-        var deadLetterMessage = await deadLetterReceiver.PeekMessageAsync(
-            fromSequenceNumber: sequenceNumber,
+        var messages = await deadLetterReceiver.ReceiveMessagesAsync(
+            maxMessages: 50,
+            maxWaitTime: TimeSpan.FromSeconds(5),
             cancellationToken: cancellationToken
         );
 
-        if (deadLetterMessage is null || deadLetterMessage.SequenceNumber != sequenceNumber)
-        {
-            return false;
-        }
-
-        var lockedMessage = await ReceiveDeadLetterBySequenceNumberAsync(
-            deadLetterReceiver,
-            sequenceNumber,
-            cancellationToken
-        );
+        var lockedMessage = messages.FirstOrDefault(x => x.SequenceNumber == sequenceNumber);
 
         if (lockedMessage is null)
         {
+            foreach (var message in messages)
+            {
+                await deadLetterReceiver.AbandonMessageAsync(
+                    message,
+                    cancellationToken: cancellationToken
+                );
+            }
+
             return false;
         }
 
@@ -90,6 +95,7 @@ public class AzureServiceBusDeadLetterService : IDeadLetterService
         {
             ContentType = lockedMessage.ContentType,
             Subject = lockedMessage.Subject,
+            CorrelationId = lockedMessage.CorrelationId,
         };
 
         foreach (var property in lockedMessage.ApplicationProperties)
@@ -101,49 +107,22 @@ public class AzureServiceBusDeadLetterService : IDeadLetterService
 
         await deadLetterReceiver.CompleteMessageAsync(lockedMessage, cancellationToken);
 
+        foreach (var message in messages.Where(x => x.SequenceNumber != sequenceNumber))
+        {
+            await deadLetterReceiver.AbandonMessageAsync(
+                message,
+                cancellationToken: cancellationToken
+            );
+        }
+
         return true;
     }
 
-    private async Task<ServiceBusReceivedMessage?> ReceiveDeadLetterBySequenceNumberAsync(
-        ServiceBusReceiver receiver,
-        long sequenceNumber,
-        CancellationToken cancellationToken
-    )
+    private static void EnsureQueueNameIsAllowed(string queueName)
     {
-        while (!cancellationToken.IsCancellationRequested)
+        if (!AllowedQueueNames.Contains(queueName))
         {
-            var message = await receiver.ReceiveMessageAsync(
-                maxWaitTime: TimeSpan.FromSeconds(3),
-                cancellationToken: cancellationToken
-            );
-
-            if (message is null)
-            {
-                return null;
-            }
-
-            if (message.SequenceNumber == sequenceNumber)
-            {
-                return message;
-            }
-
-            await receiver.AbandonMessageAsync(message, cancellationToken: cancellationToken);
+            throw new InvalidOperationException($"Queue '{queueName}' is not allowed.");
         }
-
-        return null;
-    }
-
-    private string GetQueueName()
-    {
-        var queueName = _configuration["AzureServiceBus:OrderCreatedQueueName"];
-
-        if (string.IsNullOrWhiteSpace(queueName))
-        {
-            throw new InvalidOperationException(
-                "AzureServiceBus:OrderCreatedQueueName is missing."
-            );
-        }
-
-        return queueName;
     }
 }

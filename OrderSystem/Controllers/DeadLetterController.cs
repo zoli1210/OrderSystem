@@ -14,27 +14,69 @@ public class DeadLettersController : ControllerBase
         _deadLetterService = deadLetterService;
     }
 
-    [HttpGet]
-    public async Task<IActionResult> GetAll(CancellationToken cancellationToken)
+    [HttpGet("orders")]
+    public async Task<IActionResult> GetOrderDeadLetters(CancellationToken cancellationToken)
     {
-        var messages = await _deadLetterService.GetDeadLettersAsync(cancellationToken);
+        var messages = await _deadLetterService.GetDeadLettersAsync(
+            "order-created",
+            cancellationToken
+        );
 
         return Ok(messages);
     }
 
-    [HttpPost("{sequenceNumber:long}/retry")]
-    public async Task<IActionResult> Retry(long sequenceNumber, CancellationToken cancellationToken)
+    [HttpGet("emails")]
+    public async Task<IActionResult> GetEmailDeadLetters(CancellationToken cancellationToken)
+    {
+        var messages = await _deadLetterService.GetDeadLettersAsync(
+            "email-notification",
+            cancellationToken
+        );
+
+        return Ok(messages);
+    }
+
+    [HttpPost("orders/{sequenceNumber:long}/retry")]
+    public async Task<IActionResult> RetryOrderDeadLetter(
+        long sequenceNumber,
+        CancellationToken cancellationToken
+    )
     {
         var retried = await _deadLetterService.RetryDeadLetterAsync(
+            "order-created",
             sequenceNumber,
             cancellationToken
         );
 
         if (!retried)
         {
-            return NotFound(new { message = "Dead-letter message not found.", sequenceNumber });
+            return NotFound(
+                new { message = "Order dead-letter message not found.", sequenceNumber }
+            );
         }
 
-        return Accepted(new { message = "Dead-letter message requeued.", sequenceNumber });
+        return Accepted(new { message = "Order dead-letter message requeued.", sequenceNumber });
+    }
+
+    [HttpPost("emails/{sequenceNumber:long}/retry")]
+    public async Task<IActionResult> RetryEmailDeadLetter(
+        long sequenceNumber,
+        CancellationToken cancellationToken
+    )
+    {
+        var retried = await _deadLetterService.RetryDeadLetterAsync(
+            "email-notification",
+            sequenceNumber,
+            cancellationToken
+        );
+
+        if (!retried)
+        {
+            return NotFound(
+                new { message = "Email dead-letter message not found.", sequenceNumber }
+            );
+        }
+
+        return Accepted(new { message = "Email dead-letter message requeued.", sequenceNumber });
     }
 }

@@ -1,5 +1,6 @@
 ﻿using System.Text.Json;
 using Microsoft.Extensions.Logging;
+using OrderSystem.Domain.Enums;
 using OrderSystem.Infrastructure.Messaging;
 using OrderSystem.Infrastructure.Messaging.Messages;
 using OrderSystem.Infrastructure.Persistence.Repositories;
@@ -11,8 +12,8 @@ public class PaymentProcessor : IPaymentProcessor
 {
     private readonly IOrderRepository _orderRepository;
     private readonly IPaymentService _paymentService;
-    private readonly ILogger<PaymentProcessor> _logger;
     private readonly IEmailMessageSender _emailMessageSender;
+    private readonly ILogger<PaymentProcessor> _logger;
 
     public PaymentProcessor(
         IOrderRepository orderRepository,
@@ -45,7 +46,19 @@ public class PaymentProcessor : IPaymentProcessor
             );
         }
 
-        order.SetPaymentProcessing();
+        if (order.Status != OrderStatus.Pending)
+        {
+            _logger.LogWarning(
+                "Payment processing skipped. OrderId: {OrderId}, CurrentStatus: {Status}",
+                order.Id,
+                order.Status
+            );
+
+            return;
+        }
+
+        order.StartPaymentProcessing();
+
         await _orderRepository.UpdateAsync(order, cancellationToken);
         await _orderRepository.SaveChangesAsync(cancellationToken);
 
@@ -59,13 +72,13 @@ public class PaymentProcessor : IPaymentProcessor
 
             if (paymentSuccessful)
             {
-                order.SetPaid();
+                order.MarkAsPaid();
 
                 await _emailMessageSender.SendEmailNotificationAsync(
                     new EmailNotificationMessage
                     {
                         OrderId = order.Id,
-                        CustomerEmail = orderMessage.CustomerEmail,
+                        CustomerEmail = order.CustomerEmail,
                         Subject = "Order payment successful",
                         Body = $"Your order {order.Id} has been paid successfully.",
                     },
@@ -74,7 +87,7 @@ public class PaymentProcessor : IPaymentProcessor
             }
             else
             {
-                order.SetPaymentFailed();
+                order.MarkPaymentAsFailed();
             }
 
             await _orderRepository.UpdateAsync(order, cancellationToken);
@@ -82,7 +95,8 @@ public class PaymentProcessor : IPaymentProcessor
         }
         catch
         {
-            order.SetPaymentFailed();
+            order.MarkPaymentAsFailed();
+
             await _orderRepository.UpdateAsync(order, cancellationToken);
             await _orderRepository.SaveChangesAsync(cancellationToken);
 
