@@ -1,9 +1,11 @@
 ﻿using OrderSystem.Domain.Entities;
+using OrderSystem.Domain.Enums;
 using OrderSystem.Infrastructure.Messaging;
 using OrderSystem.Infrastructure.Messaging.Messages;
 using OrderSystem.Infrastructure.Persistence.Repositories;
 using OrderSystem.Modules.Orders.DTOs;
 using OrderSystem.Modules.Payments.Services;
+using OrderSystem.Shared.Pagination;
 
 namespace OrderSystem.Modules.Orders.Services;
 
@@ -78,6 +80,33 @@ public class OrderService : IOrderService
             Status = order.Status,
             CreatedAtUtc = order.CreatedAtUtc,
             EmailSentAtUtc = order.EmailSentAtUtc,
+        };
+    }
+
+    public async Task<PagedResponse<OrderResponse>> GetAllAsync(
+        OrderStatus? status,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken
+    )
+    {
+        page = Math.Max(page, 1);
+        pageSize = Math.Clamp(pageSize, 1, 100);
+
+        var (items, totalCount) = await _orderRepository.GetAllAsync(
+            status,
+            page,
+            pageSize,
+            cancellationToken
+        );
+
+        return new PagedResponse<OrderResponse>
+        {
+            Items = items.Select(MapToResponse).ToList(),
+            TotalCount = totalCount,
+            Page = page,
+            PageSize = pageSize,
+            TotalPages = (int)Math.Ceiling(totalCount / (double)pageSize),
         };
     }
 

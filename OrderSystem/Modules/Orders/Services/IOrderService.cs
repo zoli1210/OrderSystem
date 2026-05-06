@@ -1,4 +1,6 @@
-﻿using OrderSystem.Modules.Orders.DTOs;
+﻿using OrderSystem.Domain.Enums;
+using OrderSystem.Modules.Orders.DTOs;
+using OrderSystem.Shared.Pagination;
 
 namespace OrderSystem.Modules.Orders.Services;
 
@@ -10,6 +12,13 @@ public interface IOrderService
     );
 
     Task<OrderResponse?> GetByIdAsync(Guid id, CancellationToken cancellationToken);
+
+    Task<PagedResponse<OrderResponse>> GetAllAsync(
+        OrderStatus? status,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken
+    );
 
     Task<OrderResponse> CancelAsync(Guid id, CancellationToken cancellationToken);
 }

@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using OrderSystem.Domain.Enums;
 using OrderSystem.Modules.Orders.DTOs;
 using OrderSystem.Modules.Orders.Services;
 
@@ -40,6 +41,19 @@ public class OrdersController : ControllerBase
         }
 
         return Ok(response);
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> GetAll(
+        [FromQuery] OrderStatus? status,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        CancellationToken cancellationToken = default
+    )
+    {
+        var orders = await _orderService.GetAllAsync(status, page, pageSize, cancellationToken);
+
+        return Ok(orders);
     }
 
     [HttpPost("{id:guid}/cancel")]
