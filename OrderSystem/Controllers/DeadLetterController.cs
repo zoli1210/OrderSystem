@@ -1,10 +1,13 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using OrderSystem.Infrastructure.Messaging;
+using OrderSystem.Modules.Auth;
 
 namespace OrderSystem.Controllers;
 
 [ApiController]
 [Route("dead-letters")]
+[Authorize(Roles = AuthRoles.Admin)]
 public class DeadLettersController : ControllerBase
 {
     private readonly IDeadLetterService _deadLetterService;

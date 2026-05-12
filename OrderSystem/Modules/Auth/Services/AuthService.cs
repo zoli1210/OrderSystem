@@ -11,11 +11,17 @@ namespace OrderSystem.Modules.Auth.Services;
 public class AuthService : IAuthService
 {
     private readonly UserManager<ApplicationUser> _userManager;
+    private readonly RoleManager<IdentityRole> _roleManager;
     private readonly IConfiguration _configuration;
 
-    public AuthService(UserManager<ApplicationUser> userManager, IConfiguration configuration)
+    public AuthService(
+        UserManager<ApplicationUser> userManager,
+        RoleManager<IdentityRole> roleManager,
+        IConfiguration configuration
+    )
     {
         _userManager = userManager;
+        _roleManager = roleManager;
         _configuration = configuration;
     }
 
@@ -41,7 +47,10 @@ public class AuthService : IAuthService
             throw new InvalidOperationException(errors);
         }
 
-        return GenerateToken(user);
+        await EnsureRoleExistsAsync(AuthRoles.User);
+        await _userManager.AddToRoleAsync(user, AuthRoles.User);
+
+        return await GenerateTokenAsync(user);
     }
 
     public async Task<AuthResponse> LoginAsync(
@@ -63,10 +72,10 @@ public class AuthService : IAuthService
             throw new UnauthorizedAccessException("Invalid email or password.");
         }
 
-        return GenerateToken(user);
+        return await GenerateTokenAsync(user);
     }
 
-    private AuthResponse GenerateToken(ApplicationUser user)
+    private async Task<AuthResponse> GenerateTokenAsync(ApplicationUser user)
     {
         var jwtKey = _configuration["Jwt:Key"];
         var issuer = _configuration["Jwt:Issuer"];
@@ -87,6 +96,13 @@ public class AuthService : IAuthService
             new(ClaimTypes.Email, user.Email ?? string.Empty),
         };
 
+        var roles = await _userManager.GetRolesAsync(user);
+
+        foreach (var role in roles)
+        {
+            claims.Add(new Claim(ClaimTypes.Role, role));
+        }
+
         var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
 
         var credentials = new SigningCredentials(signingKey, SecurityAlgorithms.HmacSha256);
@@ -104,5 +120,15 @@ public class AuthService : IAuthService
             Token = new JwtSecurityTokenHandler().WriteToken(token),
             ExpiresAtUtc = expiresAtUtc,
         };
+    }
+
+    private async Task EnsureRoleExistsAsync(string roleName)
+    {
+        var roleExists = await _roleManager.RoleExistsAsync(roleName);
+
+        if (!roleExists)
+        {
+            await _roleManager.CreateAsync(new IdentityRole(roleName));
+        }
     }
 }
