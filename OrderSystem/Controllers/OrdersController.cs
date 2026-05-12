@@ -1,5 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using OrderSystem.Domain.Enums;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using OrderSystem.Modules.Orders.DTOs;
 using OrderSystem.Modules.Orders.Services;
 
@@ -7,6 +7,7 @@ namespace OrderSystem.Controllers;
 
 [ApiController]
 [Route("orders")]
+[Authorize]
 public class OrdersController : ControllerBase
 {
     private readonly IOrderService _orderService;
