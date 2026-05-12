@@ -1,4 +1,5 @@
-﻿using OrderSystem.Modules.Email.Services;
+﻿using OrderSystem.Modules.Auth.Services;
+using OrderSystem.Modules.Email.Services;
 using OrderSystem.Modules.Orders.Services;
 using OrderSystem.Modules.Payments.Services;
 
@@ -11,6 +12,7 @@ public static class ApplicationDependencyInjection
         services.AddScoped<IOrderService, OrderService>();
         services.AddScoped<IPaymentService, PaymentService>();
         services.AddScoped<IEmailService, AzureCommunicationEmailService>();
+        services.AddScoped<IAuthService, AuthService>();
 
         return services;
     }

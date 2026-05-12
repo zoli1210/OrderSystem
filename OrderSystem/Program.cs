@@ -24,6 +24,7 @@ builder.Services.AddValidatorsFromAssemblyContaining<CreateOrderRequestValidator
 builder.Services.AddPersistence(builder.Configuration);
 builder.Services.AddApplicationServices();
 builder.Services.AddMessaging(builder.Configuration);
+builder.Services.AddAuth(builder.Configuration);
 
 var app = builder.Build();
 
@@ -36,6 +37,9 @@ if (app.Environment.IsDevelopment())
 app.UseMiddleware<ExceptionMiddleware>();
 
 app.UseHttpsRedirection();
+
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapControllers();
 
