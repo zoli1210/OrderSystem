@@ -3,6 +3,7 @@ using FluentValidation;
 using FluentValidation.AspNetCore;
 using Microsoft.OpenApi.Models;
 using OrderSystem.Infrastructure.DependencyInjection;
+using OrderSystem.Modules.Auth.Seed;
 using OrderSystem.Modules.Orders.Validators;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -60,6 +61,8 @@ builder.Services.AddMessaging(builder.Configuration);
 builder.Services.AddAuth(builder.Configuration);
 
 var app = builder.Build();
+
+await AuthSeeder.SeedAsync(app.Services);
 
 if (app.Environment.IsDevelopment())
 {
