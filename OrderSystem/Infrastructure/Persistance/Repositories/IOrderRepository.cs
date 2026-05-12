@@ -13,6 +13,8 @@ public interface IOrderRepository
         OrderStatus? status,
         int page,
         int pageSize,
+        string sortBy,
+        string sortOrder,
         CancellationToken cancellationToken
     );
 

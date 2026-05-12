@@ -45,13 +45,11 @@ public class OrdersController : ControllerBase
 
     [HttpGet]
     public async Task<IActionResult> GetAll(
-        [FromQuery] OrderStatus? status,
-        [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 20,
-        CancellationToken cancellationToken = default
+        [FromQuery] GetOrdersQuery query,
+        CancellationToken cancellationToken
     )
     {
-        var orders = await _orderService.GetAllAsync(status, page, pageSize, cancellationToken);
+        var orders = await _orderService.GetAllAsync(query, cancellationToken);
 
         return Ok(orders);
     }

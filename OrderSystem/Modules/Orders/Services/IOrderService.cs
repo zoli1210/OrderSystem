@@ -14,9 +14,7 @@ public interface IOrderService
     Task<OrderResponse?> GetByIdAsync(Guid id, CancellationToken cancellationToken);
 
     Task<PagedResponse<OrderResponse>> GetAllAsync(
-        OrderStatus? status,
-        int page,
-        int pageSize,
+        GetOrdersQuery query,
         CancellationToken cancellationToken
     );
 

@@ -84,19 +84,22 @@ public class OrderService : IOrderService
     }
 
     public async Task<PagedResponse<OrderResponse>> GetAllAsync(
-        OrderStatus? status,
-        int page,
-        int pageSize,
+        GetOrdersQuery query,
         CancellationToken cancellationToken
     )
     {
-        page = Math.Max(page, 1);
-        pageSize = Math.Clamp(pageSize, 1, 100);
+        var page = Math.Max(query.Page, 1);
+        var pageSize = Math.Clamp(query.PageSize, 1, 100);
+
+        var sortBy = NormalizeSortBy(query.SortBy);
+        var sortOrder = NormalizeSortOrder(query.SortOrder);
 
         var (items, totalCount) = await _orderRepository.GetAllAsync(
-            status,
+            query.Status,
             page,
             pageSize,
+            sortBy,
+            sortOrder,
             cancellationToken
         );
 
@@ -108,6 +111,29 @@ public class OrderService : IOrderService
             PageSize = pageSize,
             TotalPages = (int)Math.Ceiling(totalCount / (double)pageSize),
         };
+    }
+
+    private static string NormalizeSortBy(string? sortBy)
+    {
+        var allowedSortFields = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "createdAtUtc",
+            "totalAmount",
+            "status",
+            "customerName",
+        };
+
+        if (string.IsNullOrWhiteSpace(sortBy))
+        {
+            return "createdAtUtc";
+        }
+
+        return allowedSortFields.Contains(sortBy) ? sortBy : "createdAtUtc";
+    }
+
+    private static string NormalizeSortOrder(string? sortOrder)
+    {
+        return string.Equals(sortOrder, "asc", StringComparison.OrdinalIgnoreCase) ? "asc" : "desc";
     }
 
     public async Task<OrderResponse> CancelAsync(Guid id, CancellationToken cancellationToken)

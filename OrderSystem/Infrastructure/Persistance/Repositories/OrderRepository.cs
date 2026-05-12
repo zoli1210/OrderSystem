@@ -27,6 +27,8 @@ public class OrderRepository : IOrderRepository
         OrderStatus? status,
         int page,
         int pageSize,
+        string sortBy,
+        string sortOrder,
         CancellationToken cancellationToken
     )
     {
@@ -39,8 +41,30 @@ public class OrderRepository : IOrderRepository
 
         var totalCount = await query.CountAsync(cancellationToken);
 
+        var isDescending = string.Equals(sortOrder, "desc", StringComparison.OrdinalIgnoreCase);
+
+        query = sortBy.ToLowerInvariant() switch
+        {
+            "totalamount" => isDescending
+                ? query.OrderByDescending(order => order.TotalAmount)
+                : query.OrderBy(order => order.TotalAmount),
+
+            "status" => isDescending
+                ? query.OrderByDescending(order => order.Status)
+                : query.OrderBy(order => order.Status),
+
+            "customername" => isDescending
+                ? query.OrderByDescending(order => order.CustomerName)
+                : query.OrderBy(order => order.CustomerName),
+
+            "createdatutc" => isDescending
+                ? query.OrderByDescending(order => order.CreatedAtUtc)
+                : query.OrderBy(order => order.CreatedAtUtc),
+
+            _ => query.OrderByDescending(order => order.CreatedAtUtc),
+        };
+
         var items = await query
-            .OrderByDescending(order => order.CreatedAtUtc)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync(cancellationToken);
