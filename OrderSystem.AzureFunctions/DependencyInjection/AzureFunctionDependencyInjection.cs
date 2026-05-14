@@ -37,7 +37,10 @@ public static class AzureFunctionsDependencyInjection
             options.UseSqlServer(sqlConnectionString);
         });
 
-        services.AddSingleton(_ => new ServiceBusClient(serviceBusConnectionString));
+        services.AddSingleton(_ => new ServiceBusClient(
+            serviceBusConnectionString,
+            new ServiceBusClientOptions { TransportType = ServiceBusTransportType.AmqpWebSockets }
+        ));
 
         services.AddScoped<IOrderRepository, OrderRepository>();
 

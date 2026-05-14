@@ -12,6 +12,8 @@ public class OrderConfiguration : IEntityTypeConfiguration<Order>
 
         builder.Property(x => x.CustomerName).IsRequired().HasMaxLength(200);
 
+        builder.Property(x => x.CreatedByUserId).IsRequired().HasMaxLength(450);
+
         builder.Property(x => x.CustomerEmail).IsRequired().HasMaxLength(320);
 
         builder.Property(x => x.EmailSentAtUtc);

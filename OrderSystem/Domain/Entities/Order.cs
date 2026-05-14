@@ -8,6 +8,8 @@ public class Order
 
     public string CustomerName { get; private set; } = string.Empty;
 
+    public string CreatedByUserId { get; private set; } = string.Empty;
+
     public string CustomerEmail { get; private set; } = string.Empty;
 
     public DateTime? EmailSentAtUtc { get; private set; }
@@ -29,7 +31,8 @@ public class Order
         string customerEmail,
         decimal totalAmount,
         string currency,
-        string? description
+        string? description,
+        string createdByUserId
     )
     {
         Id = Guid.NewGuid();
@@ -38,6 +41,7 @@ public class Order
         TotalAmount = totalAmount;
         Currency = currency;
         Description = description;
+        CreatedByUserId = createdByUserId;
         Status = OrderStatus.Pending;
         CreatedAtUtc = DateTime.UtcNow;
     }

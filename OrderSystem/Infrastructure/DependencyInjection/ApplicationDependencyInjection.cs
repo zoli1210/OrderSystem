@@ -9,10 +9,14 @@ public static class ApplicationDependencyInjection
 {
     public static IServiceCollection AddApplicationServices(this IServiceCollection services)
     {
+        services.AddHttpContextAccessor();
+
+        services.AddScoped<IAuthService, AuthService>();
+        services.AddScoped<ICurrentUserService, CurrentUserService>();
+
         services.AddScoped<IOrderService, OrderService>();
         services.AddScoped<IPaymentService, PaymentService>();
         services.AddScoped<IEmailService, AzureCommunicationEmailService>();
-        services.AddScoped<IAuthService, AuthService>();
 
         return services;
     }

@@ -25,6 +25,7 @@ public class OrderRepository : IOrderRepository
 
     public async Task<(IReadOnlyList<Order> Items, int TotalCount)> GetAllAsync(
         OrderStatus? status,
+        string? createdByUserId,
         int page,
         int pageSize,
         string sortBy,
@@ -37,6 +38,11 @@ public class OrderRepository : IOrderRepository
         if (status.HasValue)
         {
             query = query.Where(order => order.Status == status.Value);
+        }
+
+        if (!string.IsNullOrWhiteSpace(createdByUserId))
+        {
+            query = query.Where(order => order.CreatedByUserId == createdByUserId);
         }
 
         var totalCount = await query.CountAsync(cancellationToken);

@@ -3,6 +3,7 @@ using OrderSystem.Domain.Enums;
 using OrderSystem.Infrastructure.Messaging;
 using OrderSystem.Infrastructure.Messaging.Messages;
 using OrderSystem.Infrastructure.Persistence.Repositories;
+using OrderSystem.Modules.Auth.Services;
 using OrderSystem.Modules.Orders.DTOs;
 using OrderSystem.Modules.Payments.Services;
 using OrderSystem.Shared.Pagination;
@@ -14,16 +15,19 @@ public class OrderService : IOrderService
     private readonly IOrderRepository _orderRepository;
     private readonly IPaymentService _paymentService;
     private readonly IOrderMessageSender _orderMessageSender;
+    private readonly ICurrentUserService _currentUserService;
 
     public OrderService(
         IOrderRepository orderRepository,
         IPaymentService paymentService,
-        IOrderMessageSender orderMessageSender
+        IOrderMessageSender orderMessageSender,
+        ICurrentUserService currentUserService
     )
     {
         _orderRepository = orderRepository;
         _paymentService = paymentService;
         _orderMessageSender = orderMessageSender;
+        _currentUserService = currentUserService;
     }
 
     public async Task<OrderResponse> CreateAsync(
@@ -31,12 +35,20 @@ public class OrderService : IOrderService
         CancellationToken cancellationToken
     )
     {
+        var currentUserId = _currentUserService.UserId;
+
+        if (string.IsNullOrWhiteSpace(currentUserId))
+        {
+            throw new UnauthorizedAccessException("User is not authenticated.");
+        }
+
         var order = new Order(
             request.CustomerName,
             request.CustomerEmail,
             request.TotalAmount,
             request.Currency,
-            request.Description
+            request.Description,
+            currentUserId
         );
 
         await _orderRepository.AddAsync(order, cancellationToken);
@@ -64,6 +76,8 @@ public class OrderService : IOrderService
             throw new NotFoundException("Order not found");
         }
 
+        EnsureUserCanAccessOrder(order);
+
         return MapToResponse(order);
     }
 
@@ -73,6 +87,7 @@ public class OrderService : IOrderService
         {
             Id = order.Id,
             CustomerName = order.CustomerName,
+            CreatedByUserId = order.CreatedByUserId,
             CustomerEmail = order.CustomerEmail,
             TotalAmount = order.TotalAmount,
             Currency = order.Currency,
@@ -88,6 +103,8 @@ public class OrderService : IOrderService
         CancellationToken cancellationToken
     )
     {
+        var createdByUserId = _currentUserService.IsAdmin ? null : _currentUserService.UserId;
+
         var page = Math.Max(query.Page, 1);
         var pageSize = Math.Clamp(query.PageSize, 1, 100);
 
@@ -96,6 +113,7 @@ public class OrderService : IOrderService
 
         var (items, totalCount) = await _orderRepository.GetAllAsync(
             query.Status,
+            createdByUserId,
             page,
             pageSize,
             sortBy,
@@ -145,11 +163,26 @@ public class OrderService : IOrderService
             throw new NotFoundException("Order not found");
         }
 
+        EnsureUserCanAccessOrder(order);
+
         order.Cancel();
 
         await _orderRepository.UpdateAsync(order, cancellationToken);
         await _orderRepository.SaveChangesAsync(cancellationToken);
 
         return MapToResponse(order);
+    }
+
+    private void EnsureUserCanAccessOrder(Order order)
+    {
+        if (_currentUserService.IsAdmin)
+        {
+            return;
+        }
+
+        if (order.CreatedByUserId != _currentUserService.UserId)
+        {
+            throw new UnauthorizedAccessException("You are not allowed to access this order.");
+        }
     }
 }

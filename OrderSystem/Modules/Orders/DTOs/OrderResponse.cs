@@ -8,6 +8,8 @@ public class OrderResponse
 
     public string CustomerName { get; set; } = string.Empty;
 
+    public string CreatedByUserId { get; set; } = string.Empty;
+
     public string CustomerEmail { get; set; } = string.Empty;
 
     public DateTime? EmailSentAtUtc { get; set; }

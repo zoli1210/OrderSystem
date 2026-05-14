@@ -17,7 +17,10 @@ public static class MessagingDependencyInjection
             throw new InvalidOperationException("AzureServiceBus:ConnectionString is missing.");
         }
 
-        services.AddSingleton(_ => new ServiceBusClient(connectionString));
+        services.AddSingleton(_ => new ServiceBusClient(
+            connectionString,
+            new ServiceBusClientOptions { TransportType = ServiceBusTransportType.AmqpWebSockets }
+        ));
 
         services.AddScoped<IOrderMessageSender, AzureServiceBusOrderMessageSender>();
         services.AddScoped<IEmailMessageSender, AzureServiceBusEmailMessageSender>();

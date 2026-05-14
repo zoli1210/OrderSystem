@@ -11,6 +11,7 @@ public interface IOrderRepository
 
     Task<(IReadOnlyList<Order> Items, int TotalCount)> GetAllAsync(
         OrderStatus? status,
+        string? createdByUserId,
         int page,
         int pageSize,
         string sortBy,
