@@ -84,6 +84,12 @@ public class PaymentProcessor : IPaymentProcessor
                     },
                     cancellationToken
                 );
+
+                _logger.LogInformation(
+                    "Payment processed successfully. OrderId: {OrderId}, Status: {Status}",
+                    order.Id,
+                    order.Status
+                );
             }
             else
             {

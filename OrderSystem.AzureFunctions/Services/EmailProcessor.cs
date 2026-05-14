@@ -44,7 +44,7 @@ public class EmailProcessor : IEmailProcessor
         if (order.IsEmailSent())
         {
             _logger.LogWarning(
-                "Email sending skipped. Email already sent. OrderId: {OrderId}",
+                "Email sending skipped because email was already sent. OrderId: {OrderId}",
                 order.Id
             );
 
@@ -58,8 +58,8 @@ public class EmailProcessor : IEmailProcessor
         await _orderRepository.UpdateAsync(order, cancellationToken);
         await _orderRepository.SaveChangesAsync(cancellationToken);
 
-        _logger.LogWarning(
-            "Email notification processed. OrderId: {OrderId}, Email: {Email}",
+        _logger.LogInformation(
+            "Email sent. OrderId: {OrderId}, Recipient: {Recipient}",
             emailMessage.OrderId,
             emailMessage.CustomerEmail
         );

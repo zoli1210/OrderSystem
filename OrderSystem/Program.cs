@@ -60,6 +60,8 @@ builder.Services.AddApplicationServices();
 builder.Services.AddMessaging(builder.Configuration);
 builder.Services.AddAuth(builder.Configuration);
 
+builder.Services.AddApplicationInsightsTelemetry();
+
 var app = builder.Build();
 
 await AuthSeeder.SeedAsync(app.Services, app.Environment);
