@@ -1,4 +1,6 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using OrderSystem.Modules.Auth;
 using OrderSystem.Modules.Auth.DTOs;
 using OrderSystem.Modules.Auth.Services;
 
@@ -35,5 +37,27 @@ public class AuthController : ControllerBase
         var response = await _authService.LoginAsync(request, cancellationToken);
 
         return Ok(response);
+    }
+
+    [HttpGet("users")]
+    [Authorize(Roles = AuthRoles.Admin)]
+    public async Task<IActionResult> GetUsers(CancellationToken cancellationToken)
+    {
+        var users = await _authService.GetUsersAsync(cancellationToken);
+
+        return Ok(users);
+    }
+
+    [HttpPut("users/{userId}/role")]
+    [Authorize(Roles = $"{AuthRoles.Admin},{AuthRoles.Manager},{AuthRoles.TeamLead}")]
+    public async Task<IActionResult> UpdateUserRole(
+        string userId,
+        UpdateUserRoleRequest request,
+        CancellationToken cancellationToken
+    )
+    {
+        await _authService.UpdateUserRoleAsync(userId, request, cancellationToken);
+
+        return NoContent();
     }
 }

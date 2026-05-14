@@ -2,6 +2,7 @@
 using System.Security.Claims;
 using System.Text;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using OrderSystem.Modules.Auth.Domain;
 using OrderSystem.Modules.Auth.DTOs;
@@ -13,16 +14,22 @@ public class AuthService : IAuthService
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly RoleManager<IdentityRole> _roleManager;
     private readonly IConfiguration _configuration;
+    private readonly ICurrentUserService _currentUserService;
+    private readonly IRolePermissionService _rolePermissionService;
 
     public AuthService(
         UserManager<ApplicationUser> userManager,
         RoleManager<IdentityRole> roleManager,
-        IConfiguration configuration
+        IConfiguration configuration,
+        ICurrentUserService currentUserService,
+        IRolePermissionService rolePermissionService
     )
     {
         _userManager = userManager;
         _roleManager = roleManager;
         _configuration = configuration;
+        _currentUserService = currentUserService;
+        _rolePermissionService = rolePermissionService;
     }
 
     public async Task<AuthResponse> RegisterAsync(
@@ -129,6 +136,99 @@ public class AuthService : IAuthService
         if (!roleExists)
         {
             await _roleManager.CreateAsync(new IdentityRole(roleName));
+        }
+    }
+
+    public async Task<IReadOnlyList<UserResponse>> GetUsersAsync(
+        CancellationToken cancellationToken
+    )
+    {
+        var users = await _userManager
+            .Users.OrderBy(user => user.Email)
+            .ToListAsync(cancellationToken);
+
+        var responses = new List<UserResponse>();
+
+        foreach (var user in users)
+        {
+            var roles = await _userManager.GetRolesAsync(user);
+
+            responses.Add(
+                new UserResponse
+                {
+                    Id = user.Id,
+                    Email = user.Email ?? string.Empty,
+                    Roles = roles.ToList(),
+                }
+            );
+        }
+
+        return responses;
+    }
+
+    public async Task UpdateUserRoleAsync(
+        string userId,
+        UpdateUserRoleRequest request,
+        CancellationToken cancellationToken
+    )
+    {
+        if (!AuthRoles.All.Contains(request.Role, StringComparer.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException("Invalid role.");
+        }
+
+        var currentUserId = _currentUserService.UserId;
+
+        if (string.IsNullOrWhiteSpace(currentUserId))
+        {
+            throw new UnauthorizedAccessException("User is not authenticated.");
+        }
+
+        var currentUser = await _userManager.FindByIdAsync(currentUserId);
+
+        if (currentUser is null)
+        {
+            throw new UnauthorizedAccessException("Current user not found.");
+        }
+
+        var currentUserRoles = await _userManager.GetRolesAsync(currentUser);
+
+        if (!_rolePermissionService.CanAssignRole(currentUserRoles.ToList(), request.Role))
+        {
+            throw new UnauthorizedAccessException("You are not allowed to assign this role.");
+        }
+
+        var targetUser = await _userManager.FindByIdAsync(userId);
+
+        if (targetUser is null)
+        {
+            throw new InvalidOperationException("Target user not found.");
+        }
+
+        var targetUserRoles = await _userManager.GetRolesAsync(targetUser);
+
+        await EnsureRoleExistsAsync(request.Role);
+
+        if (targetUserRoles.Any())
+        {
+            var removeResult = await _userManager.RemoveFromRolesAsync(targetUser, targetUserRoles);
+
+            if (!removeResult.Succeeded)
+            {
+                var errors = string.Join(
+                    "; ",
+                    removeResult.Errors.Select(error => error.Description)
+                );
+                throw new InvalidOperationException(errors);
+            }
+        }
+
+        var addResult = await _userManager.AddToRoleAsync(targetUser, request.Role);
+
+        if (!addResult.Succeeded)
+        {
+            var errors = string.Join("; ", addResult.Errors.Select(error => error.Description));
+            throw new InvalidOperationException(errors);
         }
     }
 }

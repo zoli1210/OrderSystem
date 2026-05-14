@@ -13,6 +13,7 @@ public static class ApplicationDependencyInjection
 
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<ICurrentUserService, CurrentUserService>();
+        services.AddScoped<IRolePermissionService, RolePermissionService>();
 
         services.AddScoped<IOrderService, OrderService>();
         services.AddScoped<IPaymentService, PaymentService>();

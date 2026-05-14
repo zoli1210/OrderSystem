@@ -5,7 +5,10 @@ namespace OrderSystem.Modules.Auth.Seed;
 
 public static class AuthSeeder
 {
-    public static async Task SeedAsync(IServiceProvider serviceProvider)
+    public static async Task SeedAsync(
+        IServiceProvider serviceProvider,
+        IWebHostEnvironment environment
+    )
     {
         using var scope = serviceProvider.CreateScope();
 
@@ -13,9 +16,22 @@ public static class AuthSeeder
         var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
         var configuration = scope.ServiceProvider.GetRequiredService<IConfiguration>();
 
-        await EnsureRoleExistsAsync(roleManager, AuthRoles.Admin);
-        await EnsureRoleExistsAsync(roleManager, AuthRoles.User);
+        foreach (var role in AuthRoles.All)
+        {
+            await EnsureRoleExistsAsync(roleManager, role);
+        }
 
+        if (environment.IsDevelopment())
+        {
+            await SeedDevelopmentAdminUserAsync(userManager, configuration);
+        }
+    }
+
+    private static async Task SeedDevelopmentAdminUserAsync(
+        UserManager<ApplicationUser> userManager,
+        IConfiguration configuration
+    )
+    {
         var adminEmail = configuration["AdminUser:Email"];
         var adminPassword = configuration["AdminUser:Password"];
 
@@ -48,6 +64,7 @@ public static class AuthSeeder
                     "; ",
                     createResult.Errors.Select(error => error.Description)
                 );
+
                 throw new InvalidOperationException($"Admin user creation failed: {errors}");
             }
         }

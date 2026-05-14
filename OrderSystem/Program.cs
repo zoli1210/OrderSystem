@@ -62,7 +62,7 @@ builder.Services.AddAuth(builder.Configuration);
 
 var app = builder.Build();
 
-await AuthSeeder.SeedAsync(app.Services);
+await AuthSeeder.SeedAsync(app.Services, app.Environment);
 
 if (app.Environment.IsDevelopment())
 {
