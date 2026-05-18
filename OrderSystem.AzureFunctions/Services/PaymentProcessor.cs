@@ -14,6 +14,7 @@ public class PaymentProcessor : IPaymentProcessor
     private readonly IPaymentService _paymentService;
     private readonly IEmailMessageSender _emailMessageSender;
     private readonly ILogger<PaymentProcessor> _logger;
+    private const string SystemUserId = "system";
 
     public PaymentProcessor(
         IOrderRepository orderRepository,
@@ -57,7 +58,7 @@ public class PaymentProcessor : IPaymentProcessor
             return;
         }
 
-        order.StartPaymentProcessing();
+        order.StartPaymentProcessing(SystemUserId);
 
         await _orderRepository.UpdateAsync(order, cancellationToken);
         await _orderRepository.SaveChangesAsync(cancellationToken);
@@ -72,7 +73,7 @@ public class PaymentProcessor : IPaymentProcessor
 
             if (paymentSuccessful)
             {
-                order.MarkAsPaid();
+                order.MarkAsPaid(SystemUserId);
 
                 await _emailMessageSender.SendEmailNotificationAsync(
                     new EmailNotificationMessage
@@ -93,7 +94,7 @@ public class PaymentProcessor : IPaymentProcessor
             }
             else
             {
-                order.MarkPaymentAsFailed();
+                order.MarkPaymentAsFailed(SystemUserId);
             }
 
             await _orderRepository.UpdateAsync(order, cancellationToken);
@@ -101,7 +102,7 @@ public class PaymentProcessor : IPaymentProcessor
         }
         catch
         {
-            order.MarkPaymentAsFailed();
+            order.MarkPaymentAsFailed(SystemUserId);
 
             await _orderRepository.UpdateAsync(order, cancellationToken);
             await _orderRepository.SaveChangesAsync(cancellationToken);

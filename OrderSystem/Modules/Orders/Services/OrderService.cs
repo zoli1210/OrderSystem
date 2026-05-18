@@ -154,7 +154,11 @@ public class OrderService : IOrderService
         return string.Equals(sortOrder, "asc", StringComparison.OrdinalIgnoreCase) ? "asc" : "desc";
     }
 
-    public async Task<OrderResponse> CancelAsync(Guid id, CancellationToken cancellationToken)
+    public async Task<OrderResponse> CancelAsync(
+        Guid id,
+        CancelOrderRequest request,
+        CancellationToken cancellationToken
+    )
     {
         var order = await _orderRepository.GetByIdAsync(id, cancellationToken);
 
@@ -165,7 +169,14 @@ public class OrderService : IOrderService
 
         EnsureUserCanAccessOrder(order);
 
-        order.Cancel();
+        var currentUserId = _currentUserService.UserId;
+
+        if (string.IsNullOrWhiteSpace(currentUserId))
+        {
+            throw new UnauthorizedAccessException("User is not authenticated.");
+        }
+
+        order.Cancel(request.Reason, currentUserId);
 
         await _orderRepository.UpdateAsync(order, cancellationToken);
         await _orderRepository.SaveChangesAsync(cancellationToken);

@@ -18,5 +18,9 @@ public interface IOrderService
         CancellationToken cancellationToken
     );
 
-    Task<OrderResponse> CancelAsync(Guid id, CancellationToken cancellationToken);
+    Task<OrderResponse> CancelAsync(
+        Guid id,
+        CancelOrderRequest request,
+        CancellationToken cancellationToken
+    );
 }

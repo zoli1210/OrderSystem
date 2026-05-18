@@ -56,9 +56,13 @@ public class OrdersController : ControllerBase
     }
 
     [HttpPost("{id:guid}/cancel")]
-    public async Task<IActionResult> Cancel(Guid id, CancellationToken cancellationToken)
+    public async Task<IActionResult> Cancel(
+        Guid id,
+        CancelOrderRequest request,
+        CancellationToken cancellationToken
+    )
     {
-        var response = await _orderService.CancelAsync(id, cancellationToken);
+        var response = await _orderService.CancelAsync(id, request, cancellationToken);
 
         return Ok(response);
     }

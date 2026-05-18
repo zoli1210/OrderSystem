@@ -27,5 +27,13 @@ public class OrderConfiguration : IEntityTypeConfiguration<Order>
         builder.Property(x => x.Status).IsRequired();
 
         builder.Property(x => x.CreatedAtUtc).IsRequired();
+
+        builder.Property(x => x.UpdatedAtUtc);
+
+        builder.Property(x => x.UpdatedByUserId).HasMaxLength(450);
+
+        builder.Property(x => x.CancelledAtUtc);
+
+        builder.Property(x => x.CancellationReason).HasMaxLength(500);
     }
 }

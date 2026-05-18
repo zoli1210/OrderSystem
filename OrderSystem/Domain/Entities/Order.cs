@@ -24,6 +24,14 @@ public class Order
 
     public DateTime CreatedAtUtc { get; private set; }
 
+    public DateTime? UpdatedAtUtc { get; private set; }
+
+    public string? UpdatedByUserId { get; private set; }
+
+    public DateTime? CancelledAtUtc { get; private set; }
+
+    public string? CancellationReason { get; private set; }
+
     private Order() { }
 
     public Order(
@@ -44,9 +52,11 @@ public class Order
         CreatedByUserId = createdByUserId;
         Status = OrderStatus.Pending;
         CreatedAtUtc = DateTime.UtcNow;
+        UpdatedAtUtc = CreatedAtUtc;
+        UpdatedByUserId = createdByUserId;
     }
 
-    public void StartPaymentProcessing()
+    public void StartPaymentProcessing(string updatedByUserId)
     {
         if (Status != OrderStatus.Pending)
         {
@@ -56,9 +66,10 @@ public class Order
         }
 
         Status = OrderStatus.PaymentProcessing;
+        SetUpdated(updatedByUserId);
     }
 
-    public void MarkAsPaid()
+    public void MarkAsPaid(string updatedByUserId)
     {
         if (Status != OrderStatus.PaymentProcessing)
         {
@@ -68,9 +79,10 @@ public class Order
         }
 
         Status = OrderStatus.Paid;
+        SetUpdated(updatedByUserId);
     }
 
-    public void MarkPaymentAsFailed()
+    public void MarkPaymentAsFailed(string updatedByUserId)
     {
         if (Status != OrderStatus.PaymentProcessing)
         {
@@ -80,16 +92,25 @@ public class Order
         }
 
         Status = OrderStatus.PaymentFailed;
+        SetUpdated(updatedByUserId);
     }
 
-    public void Cancel()
+    public void Cancel(string reason, string updatedByUserId)
     {
         if (Status is OrderStatus.Paid or OrderStatus.PaymentProcessing or OrderStatus.Cancelled)
         {
             throw new InvalidOperationException($"Order cannot be cancelled from status {Status}.");
         }
 
+        if (string.IsNullOrWhiteSpace(reason))
+        {
+            throw new InvalidOperationException("Cancellation reason is required.");
+        }
+
         Status = OrderStatus.Cancelled;
+        CancelledAtUtc = DateTime.UtcNow;
+        CancellationReason = reason;
+        SetUpdated(updatedByUserId);
     }
 
     public bool IsEmailSent()
@@ -105,5 +126,11 @@ public class Order
         }
 
         EmailSentAtUtc = DateTime.UtcNow;
+    }
+
+    private void SetUpdated(string updatedByUserId)
+    {
+        UpdatedAtUtc = DateTime.UtcNow;
+        UpdatedByUserId = updatedByUserId;
     }
 }

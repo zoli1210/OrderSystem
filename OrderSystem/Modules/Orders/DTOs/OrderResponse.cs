@@ -23,4 +23,12 @@ public class OrderResponse
     public OrderStatus Status { get; set; }
 
     public DateTime CreatedAtUtc { get; set; }
+
+    public DateTime? UpdatedAtUtc { get; set; }
+
+    public string? UpdatedByUserId { get; set; }
+
+    public DateTime? CancelledAtUtc { get; set; }
+
+    public string? CancellationReason { get; set; }
 }
