@@ -23,4 +23,9 @@ public interface IOrderService
         CancelOrderRequest request,
         CancellationToken cancellationToken
     );
+
+    Task<IReadOnlyList<OrderStatusHistoryResponse>> GetStatusHistoryAsync(
+        Guid orderId,
+        CancellationToken cancellationToken
+    );
 }

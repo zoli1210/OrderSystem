@@ -1,5 +1,6 @@
 ﻿using System.Text.Json;
 using Microsoft.Extensions.Logging;
+using OrderSystem.Domain.Entities;
 using OrderSystem.Domain.Enums;
 using OrderSystem.Infrastructure.Messaging;
 using OrderSystem.Infrastructure.Messaging.Messages;
@@ -15,17 +16,20 @@ public class PaymentProcessor : IPaymentProcessor
     private readonly IEmailMessageSender _emailMessageSender;
     private readonly ILogger<PaymentProcessor> _logger;
     private const string SystemUserId = "system";
+    private readonly IOrderStatusHistoryRepository _statusHistoryRepository;
 
     public PaymentProcessor(
         IOrderRepository orderRepository,
         IPaymentService paymentService,
         IEmailMessageSender emailMessageSender,
+        IOrderStatusHistoryRepository statusHistoryRepository,
         ILogger<PaymentProcessor> logger
     )
     {
         _orderRepository = orderRepository;
         _paymentService = paymentService;
         _emailMessageSender = emailMessageSender;
+        _statusHistoryRepository = statusHistoryRepository;
         _logger = logger;
     }
 
@@ -58,7 +62,14 @@ public class PaymentProcessor : IPaymentProcessor
             return;
         }
 
+        var previousStatus = order.Status;
+
         order.StartPaymentProcessing(SystemUserId);
+
+        await _statusHistoryRepository.AddAsync(
+            new OrderStatusHistory(order.Id, previousStatus, order.Status, SystemUserId),
+            cancellationToken
+        );
 
         await _orderRepository.UpdateAsync(order, cancellationToken);
         await _orderRepository.SaveChangesAsync(cancellationToken);
@@ -70,6 +81,8 @@ public class PaymentProcessor : IPaymentProcessor
                 order.TotalAmount,
                 cancellationToken
             );
+
+            var previousPaymentStatus = order.Status;
 
             if (paymentSuccessful)
             {
@@ -97,12 +110,24 @@ public class PaymentProcessor : IPaymentProcessor
                 order.MarkPaymentAsFailed(SystemUserId);
             }
 
+            await _statusHistoryRepository.AddAsync(
+                new OrderStatusHistory(order.Id, previousPaymentStatus, order.Status, SystemUserId),
+                cancellationToken
+            );
+
             await _orderRepository.UpdateAsync(order, cancellationToken);
             await _orderRepository.SaveChangesAsync(cancellationToken);
         }
         catch
         {
+            var previousFailedStatus = order.Status;
+
             order.MarkPaymentAsFailed(SystemUserId);
+
+            await _statusHistoryRepository.AddAsync(
+                new OrderStatusHistory(order.Id, previousFailedStatus, order.Status, SystemUserId),
+                cancellationToken
+            );
 
             await _orderRepository.UpdateAsync(order, cancellationToken);
             await _orderRepository.SaveChangesAsync(cancellationToken);

@@ -12,6 +12,8 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
 
     public DbSet<Order> Orders => Set<Order>();
 
+    public DbSet<OrderStatusHistory> OrderStatusHistories => Set<OrderStatusHistory>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);

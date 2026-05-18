@@ -66,4 +66,12 @@ public class OrdersController : ControllerBase
 
         return Ok(response);
     }
+
+    [HttpGet("{id:guid}/status-history")]
+    public async Task<IActionResult> GetStatusHistory(Guid id, CancellationToken cancellationToken)
+    {
+        var history = await _orderService.GetStatusHistoryAsync(id, cancellationToken);
+
+        return Ok(history);
+    }
 }

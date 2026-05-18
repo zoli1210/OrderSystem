@@ -16,18 +16,19 @@ public class OrderService : IOrderService
     private readonly IPaymentService _paymentService;
     private readonly IOrderMessageSender _orderMessageSender;
     private readonly ICurrentUserService _currentUserService;
+    private readonly IOrderStatusHistoryRepository _statusHistoryRepository;
 
     public OrderService(
         IOrderRepository orderRepository,
-        IPaymentService paymentService,
         IOrderMessageSender orderMessageSender,
-        ICurrentUserService currentUserService
+        ICurrentUserService currentUserService,
+        IOrderStatusHistoryRepository statusHistoryRepository
     )
     {
         _orderRepository = orderRepository;
-        _paymentService = paymentService;
         _orderMessageSender = orderMessageSender;
         _currentUserService = currentUserService;
+        _statusHistoryRepository = statusHistoryRepository;
     }
 
     public async Task<OrderResponse> CreateAsync(
@@ -95,6 +96,10 @@ public class OrderService : IOrderService
             Status = order.Status,
             CreatedAtUtc = order.CreatedAtUtc,
             EmailSentAtUtc = order.EmailSentAtUtc,
+            UpdatedAtUtc = order.UpdatedAtUtc,
+            UpdatedByUserId = order.UpdatedByUserId,
+            CancelledAtUtc = order.CancelledAtUtc,
+            CancellationReason = order.CancellationReason,
         };
     }
 
@@ -176,7 +181,14 @@ public class OrderService : IOrderService
             throw new UnauthorizedAccessException("User is not authenticated.");
         }
 
+        var previousStatus = order.Status;
+
         order.Cancel(request.Reason, currentUserId);
+
+        await _statusHistoryRepository.AddAsync(
+            new OrderStatusHistory(order.Id, previousStatus, order.Status, currentUserId),
+            cancellationToken
+        );
 
         await _orderRepository.UpdateAsync(order, cancellationToken);
         await _orderRepository.SaveChangesAsync(cancellationToken);
@@ -195,5 +207,37 @@ public class OrderService : IOrderService
         {
             throw new UnauthorizedAccessException("You are not allowed to access this order.");
         }
+    }
+
+    public async Task<IReadOnlyList<OrderStatusHistoryResponse>> GetStatusHistoryAsync(
+        Guid orderId,
+        CancellationToken cancellationToken
+    )
+    {
+        var order = await _orderRepository.GetByIdAsync(orderId, cancellationToken);
+
+        if (order is null)
+        {
+            throw new NotFoundException("Order not found");
+        }
+
+        EnsureUserCanAccessOrder(order);
+
+        var history = await _statusHistoryRepository.GetByOrderIdAsync(orderId, cancellationToken);
+
+        return history.Select(MapToStatusHistoryResponse).ToList();
+    }
+
+    private static OrderStatusHistoryResponse MapToStatusHistoryResponse(OrderStatusHistory history)
+    {
+        return new OrderStatusHistoryResponse
+        {
+            Id = history.Id,
+            OrderId = history.OrderId,
+            FromStatus = history.FromStatus,
+            ToStatus = history.ToStatus,
+            ChangedAtUtc = history.ChangedAtUtc,
+            ChangedByUserId = history.ChangedByUserId,
+        };
     }
 }

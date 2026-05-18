@@ -24,6 +24,7 @@ public static class PersistenceDependencyInjection
         });
 
         services.AddScoped<IOrderRepository, OrderRepository>();
+        services.AddScoped<IOrderStatusHistoryRepository, OrderStatusHistoryRepository>();
 
         return services;
     }
