@@ -240,4 +240,47 @@ public class OrderService : IOrderService
             ChangedByUserId = history.ChangedByUserId,
         };
     }
+
+    public async Task<OrderResponse> RetryPaymentAsync(Guid id, CancellationToken cancellationToken)
+    {
+        var order = await _orderRepository.GetByIdAsync(id, cancellationToken);
+
+        if (order is null)
+        {
+            throw new NotFoundException("Order not found");
+        }
+
+        EnsureUserCanAccessOrder(order);
+
+        var currentUserId = _currentUserService.UserId;
+
+        if (string.IsNullOrWhiteSpace(currentUserId))
+        {
+            throw new UnauthorizedAccessException("User is not authenticated.");
+        }
+
+        var previousStatus = order.Status;
+
+        order.RetryPayment(currentUserId);
+
+        await _statusHistoryRepository.AddAsync(
+            new OrderStatusHistory(order.Id, previousStatus, order.Status, currentUserId),
+            cancellationToken
+        );
+
+        await _orderRepository.UpdateAsync(order, cancellationToken);
+        await _orderRepository.SaveChangesAsync(cancellationToken);
+
+        await _orderMessageSender.SendOrderCreatedAsync(
+            new OrderCreatedMessage
+            {
+                OrderId = order.Id,
+                TotalAmount = order.TotalAmount,
+                CustomerEmail = order.CustomerEmail,
+            },
+            cancellationToken
+        );
+
+        return MapToResponse(order);
+    }
 }

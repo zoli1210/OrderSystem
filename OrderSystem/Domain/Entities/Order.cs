@@ -113,6 +113,19 @@ public class Order
         SetUpdated(updatedByUserId);
     }
 
+    public void RetryPayment(string updatedByUserId)
+    {
+        if (Status != OrderStatus.PaymentFailed)
+        {
+            throw new InvalidOperationException(
+                $"Payment retry cannot be started from status {Status}."
+            );
+        }
+
+        Status = OrderStatus.Pending;
+        SetUpdated(updatedByUserId);
+    }
+
     public bool IsEmailSent()
     {
         return EmailSentAtUtc.HasValue;

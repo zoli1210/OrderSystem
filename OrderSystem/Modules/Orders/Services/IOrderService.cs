@@ -28,4 +28,6 @@ public interface IOrderService
         Guid orderId,
         CancellationToken cancellationToken
     );
+
+    Task<OrderResponse> RetryPaymentAsync(Guid id, CancellationToken cancellationToken);
 }

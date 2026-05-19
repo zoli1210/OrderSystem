@@ -74,4 +74,12 @@ public class OrdersController : ControllerBase
 
         return Ok(history);
     }
+
+    [HttpPost("{id:guid}/retry-payment")]
+    public async Task<IActionResult> RetryPayment(Guid id, CancellationToken cancellationToken)
+    {
+        var response = await _orderService.RetryPaymentAsync(id, cancellationToken);
+
+        return Accepted(response);
+    }
 }
