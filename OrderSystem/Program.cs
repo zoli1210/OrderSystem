@@ -1,8 +1,10 @@
 using System.Text.Json.Serialization;
 using FluentValidation;
 using FluentValidation.AspNetCore;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.OpenApi.Models;
 using OrderSystem.Infrastructure.DependencyInjection;
+using OrderSystem.Infrastructure.HealthChecks;
 using OrderSystem.Modules.Auth.Seed;
 using OrderSystem.Modules.Orders.Validators;
 
@@ -59,6 +61,7 @@ builder.Services.AddPersistence(builder.Configuration);
 builder.Services.AddApplicationServices();
 builder.Services.AddMessaging(builder.Configuration);
 builder.Services.AddAuth(builder.Configuration);
+builder.Services.AddProjectHealthChecks();
 
 builder.Services.AddApplicationInsightsTelemetry();
 
@@ -80,5 +83,10 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+app.MapHealthChecks(
+    "/health",
+    new HealthCheckOptions { ResponseWriter = HealthCheckResponse.WriteResponseAsync }
+);
 
 app.Run();
