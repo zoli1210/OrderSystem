@@ -30,4 +30,8 @@ public interface IOrderService
     );
 
     Task<OrderResponse> RetryPaymentAsync(Guid id, CancellationToken cancellationToken);
+
+    Task<IReadOnlyList<UserOrderHistoryResponse>> GetUserHistoryAsync(
+        CancellationToken cancellationToken
+    );
 }

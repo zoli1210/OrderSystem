@@ -78,6 +78,17 @@ public class OrderRepository : IOrderRepository
         return (items, totalCount);
     }
 
+    public async Task<IReadOnlyList<Order>> GetByUserIdAsync(
+        string userId,
+        CancellationToken cancellationToken
+    )
+    {
+        return await _dbContext
+            .Orders.Where(order => order.CreatedByUserId == userId)
+            .OrderByDescending(order => order.CreatedAtUtc)
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task SaveChangesAsync(CancellationToken cancellationToken)
     {
         await _dbContext.SaveChangesAsync(cancellationToken);

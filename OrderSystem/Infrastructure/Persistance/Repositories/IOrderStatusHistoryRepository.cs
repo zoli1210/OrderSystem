@@ -12,4 +12,9 @@ public interface IOrderStatusHistoryRepository
     );
 
     Task SaveChangesAsync(CancellationToken cancellationToken);
+
+    Task<IReadOnlyList<OrderStatusHistory>> GetByOrderIdsAsync(
+        IReadOnlyCollection<Guid> orderIds,
+        CancellationToken cancellationToken
+    );
 }

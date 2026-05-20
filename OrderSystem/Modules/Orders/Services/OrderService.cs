@@ -283,4 +283,64 @@ public class OrderService : IOrderService
 
         return MapToResponse(order);
     }
+
+    public async Task<IReadOnlyList<UserOrderHistoryResponse>> GetUserHistoryAsync(
+        CancellationToken cancellationToken
+    )
+    {
+        var currentUserId = _currentUserService.UserId;
+
+        if (string.IsNullOrWhiteSpace(currentUserId))
+        {
+            throw new UnauthorizedAccessException("User is not authenticated.");
+        }
+
+        var orders = await _orderRepository.GetByUserIdAsync(currentUserId, cancellationToken);
+
+        if (!orders.Any())
+        {
+            return [];
+        }
+
+        var orderIds = orders.Select(order => order.Id).ToList();
+
+        var histories = await _statusHistoryRepository.GetByOrderIdsAsync(
+            orderIds,
+            cancellationToken
+        );
+
+        var historiesByOrderId = histories
+            .GroupBy(history => history.OrderId)
+            .ToDictionary(
+                group => group.Key,
+                group =>
+                    group
+                        .Select(history => new UserOrderStatusHistoryItemResponse
+                        {
+                            FromStatus = history.FromStatus,
+                            ToStatus = history.ToStatus,
+                            ChangedAtUtc = history.ChangedAtUtc,
+                            ChangedByUserId = history.ChangedByUserId,
+                        })
+                        .ToList()
+            );
+
+        return orders
+            .Select(order => new UserOrderHistoryResponse
+            {
+                OrderId = order.Id,
+                CustomerName = order.CustomerName,
+                CustomerEmail = order.CustomerEmail,
+                TotalAmount = order.TotalAmount,
+                Currency = order.Currency,
+                Description = order.Description,
+                CurrentStatus = order.Status,
+                CreatedAtUtc = order.CreatedAtUtc,
+                UpdatedAtUtc = order.UpdatedAtUtc,
+                StatusHistory = historiesByOrderId.TryGetValue(order.Id, out var orderHistory)
+                    ? orderHistory
+                    : [],
+            })
+            .ToList();
+    }
 }

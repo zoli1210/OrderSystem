@@ -21,4 +21,6 @@ public interface IOrderRepository
 
     Task SaveChangesAsync(CancellationToken cancellationToken);
     Task UpdateAsync(Order order, CancellationToken cancellationToken);
+
+    Task<IReadOnlyList<Order>> GetByUserIdAsync(string userId, CancellationToken cancellationToken);
 }

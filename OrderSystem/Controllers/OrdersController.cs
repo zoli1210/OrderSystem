@@ -82,4 +82,12 @@ public class OrdersController : ControllerBase
 
         return Accepted(response);
     }
+
+    [HttpGet("user-history")]
+    public async Task<IActionResult> GetUserHistory(CancellationToken cancellationToken)
+    {
+        var history = await _orderService.GetUserHistoryAsync(cancellationToken);
+
+        return Ok(history);
+    }
 }

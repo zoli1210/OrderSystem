@@ -32,4 +32,15 @@ public class OrderStatusHistoryRepository : IOrderStatusHistoryRepository
     {
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
+
+    public async Task<IReadOnlyList<OrderStatusHistory>> GetByOrderIdsAsync(
+        IReadOnlyCollection<Guid> orderIds,
+        CancellationToken cancellationToken
+    )
+    {
+        return await _dbContext
+            .OrderStatusHistories.Where(history => orderIds.Contains(history.OrderId))
+            .OrderBy(history => history.ChangedAtUtc)
+            .ToListAsync(cancellationToken);
+    }
 }
