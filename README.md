@@ -1,20 +1,18 @@
 # OrderSystem
 
-OrderSystem is a .NET 8 learning project that demonstrates an event-driven order processing flow using ASP.NET Core Web API, SQL Server, Azure Service Bus, and Azure Functions.
+OrderSystem is a .NET 8 learning project that demonstrates an event-driven order processing flow using ASP.NET Core Web API, SQL Server, Azure Service Bus, Azure Functions, and Azure Communication Services.
 
-The goal of the project is to keep the system small and understandable while still following a realistic backend architecture.
+The goal of the project is to keep the system small and understandable while still following realistic backend architecture patterns.
 
 ## Projects
 
-```txt
-OrderSystem.sln
-│
-├── OrderSystem
-│   └── ASP.NET Core Web API
-│
-└── OrderSystem.AzureFunctions
-    └── Azure Functions worker
-```
+    OrderSystem.sln
+    │
+    ├── OrderSystem
+    │   └── ASP.NET Core Web API
+    │
+    └── OrderSystem.AzureFunctions
+        └── Azure Functions worker
 
 ## Responsibilities
 
@@ -25,9 +23,12 @@ The API project is responsible for:
 - creating orders
 - validating incoming requests
 - saving orders to SQL Server
-- publishing messages to Azure Service Bus
 - exposing order endpoints
+- handling authentication and authorization
+- managing user roles
+- publishing messages to Azure Service Bus
 - exposing dead-letter inspection and retry endpoints
+- exposing health check endpoints
 
 ### OrderSystem.AzureFunctions
 
@@ -37,57 +38,52 @@ The Azure Functions project is responsible for:
 - updating order status
 - publishing email notification messages
 - processing email notification messages
-- simulating email sending
+- sending emails through Azure Communication Services
 
 ## Main Flow
 
-```txt
-POST /orders
-→ Order saved to SQL Server with Pending status
-→ OrderCreatedMessage sent to order-created queue
-→ PaymentProcessorFunction processes the message
-→ Order status changes to Paid or PaymentFailed
-→ EmailNotificationMessage sent to email-notification queue
-→ EmailNotificationFunction processes the email message
-```
+    POST /orders
+    → Order saved to SQL Server with Pending status
+    → OrderCreatedMessage sent to order-created queue
+    → PaymentProcessorFunction processes the message
+    → Order status changes to PaymentProcessing
+    → Order status changes to Paid or PaymentFailed
+    → EmailNotificationMessage sent to email-notification queue
+    → EmailNotificationFunction sends the email
 
 ## Architecture
 
-```txt
-Client
-  ↓
-OrderSystem API
-  ↓
-SQL Server
-  ↓
-Azure Service Bus: order-created
-  ↓
-PaymentProcessorFunction
-  ↓
-Azure Service Bus: email-notification
-  ↓
-EmailNotificationFunction
-```
+    Client
+      ↓
+    OrderSystem API
+      ↓
+    SQL Server
+      ↓
+    Azure Service Bus: order-created
+      ↓
+    PaymentProcessorFunction
+      ↓
+    Azure Service Bus: email-notification
+      ↓
+    EmailNotificationFunction
+      ↓
+    Azure Communication Services
 
 ## Main Components
 
 ### API Project
 
-```txt
-Controllers
-Domain
-Infrastructure
-Modules
-Shared
-```
+    Controllers
+    Domain
+    Infrastructure
+    Modules
+    Shared
 
 ### Function Project
 
-```txt
-Functions
-Services
-DependencyInjection
-```
+    Functions
+    Services
+    DependencyInjection
 
 ## Domain
 
@@ -95,22 +91,53 @@ The main entity is `Order`.
 
 An order can have the following statuses:
 
-```txt
-Pending
-PaymentProcessing
-Paid
-PaymentFailed
-Cancelled
-```
+    Pending
+    PaymentProcessing
+    Paid
+    PaymentFailed
+    Cancelled
+
+Order status changes are tracked separately through status history.
+
+Example:
+
+    Pending → PaymentProcessing → Paid
+
+or:
+
+    Pending → PaymentProcessing → PaymentFailed → Pending → PaymentProcessing → Paid
+
+## Authentication and Authorization
+
+The API uses JWT Bearer authentication with ASP.NET Core Identity.
+
+Supported roles:
+
+    Admin
+    Manager
+    TeamLead
+    Support
+    User
+
+Role hierarchy:
+
+    Admin    → can assign Manager, TeamLead, Support, User
+    Manager  → can assign TeamLead, Support, User
+    TeamLead → can assign Support, User
+    Support  → cannot assign roles
+    User     → cannot assign roles
+
+Orders are connected to the authenticated user.
+
+    User  → can access only their own orders
+    Admin → can access all orders
 
 ## Messaging
 
 The system uses two Azure Service Bus queues:
 
-```txt
-order-created
-email-notification
-```
+    order-created
+    email-notification
 
 `order-created` is used to start payment processing.
 
@@ -122,25 +149,62 @@ Azure Service Bus dead-letter functionality is used for failed messages.
 
 The API can:
 
-- list dead-letter messages
-- retry a dead-letter message by sequence number
+- list order dead-letter messages
+- list email dead-letter messages
+- retry dead-letter messages by sequence number
 
 Available endpoints:
 
-```txt
-GET /dead-letters
-POST /dead-letters/{sequenceNumber}/retry
-```
+    GET  /dead-letters/orders
+    GET  /dead-letters/emails
+
+    POST /dead-letters/orders/{sequenceNumber}/retry
+    POST /dead-letters/emails/{sequenceNumber}/retry
 
 ## API Endpoints
 
-```txt
-POST /orders
-GET /orders/{id}
+    POST   /auth/register
+    POST   /auth/login
+    GET    /auth/users
+    PUT    /auth/users/{userId}/role
 
-GET /dead-letters
-POST /dead-letters/{sequenceNumber}/retry
-```
+    POST   /orders
+    GET    /orders
+    GET    /orders/{id}
+    POST   /orders/{id}/cancel
+    POST   /orders/{id}/retry-payment
+    GET    /orders/{id}/status-history
+
+    GET    /dead-letters/orders
+    GET    /dead-letters/emails
+    POST   /dead-letters/orders/{sequenceNumber}/retry
+    POST   /dead-letters/emails/{sequenceNumber}/retry
+
+    GET    /health
+
+## Health Checks
+
+The API exposes a detailed health check endpoint:
+
+    GET /health
+
+It checks:
+
+    SQL database
+    Azure Service Bus configuration
+    Application Insights configuration
+
+## Observability
+
+Application Insights is used for telemetry and logging.
+
+It tracks:
+
+    API requests
+    Azure Function executions
+    traces
+    exceptions
+    dependency calls
 
 ## Configuration
 
@@ -148,60 +212,36 @@ Secrets must not be committed to source control.
 
 Use local development config files for secrets:
 
-```txt
-appsettings.Development.json
-local.settings.json
-```
+    appsettings.Development.json
+    local.settings.json
 
-Required configuration values:
+Required configuration values include:
 
-```txt
-SQLConnection
-AzureServiceBus:ConnectionString
-AzureServiceBus:OrderCreatedQueueName
-AzureServiceBus:EmailNotificationQueueName
-AzureServiceBusConnection
-SqlConnectionString
-```
+    SQLConnection
+    Jwt:Issuer
+    Jwt:Audience
+    Jwt:Key
+    AdminUser:Email
+    AdminUser:Password
+    AzureServiceBus:ConnectionString
+    AzureServiceBus:OrderCreatedQueueName
+    AzureServiceBus:EmailNotificationQueueName
+    AzureServiceBusConnection
+    SqlConnectionString
+    CommunicationServices:ConnectionString
+    CommunicationServices:SenderAddress
+    ApplicationInsights:ConnectionString
+    APPLICATIONINSIGHTS_CONNECTION_STRING
 
 ## Local Development
 
 Both projects must run during local testing:
 
-```txt
-OrderSystem
-OrderSystem.AzureFunctions
-```
+    OrderSystem
+    OrderSystem.AzureFunctions
 
-The expected order status flow is:
+The expected successful order status flow is:
 
-```txt
-Pending → PaymentProcessing → Paid
-```
+    Pending → PaymentProcessing → Paid
 
 If payment processing fails, Azure Service Bus retries the message and eventually moves it to the dead-letter queue.
-
-## Current Limitations
-
-- payment processing is simulated
-- email sending is simulated
-- no authentication yet
-- no real payment provider
-- no real email provider
-- LocalDB is used for development
-
-## Future Improvements
-
-Possible next steps:
-
-```txt
-Authentication
-Real email provider
-Real payment provider
-Azure Key Vault
-Application Insights
-Idempotency
-Outbox pattern
-Order cancellation
-Admin UI for dead-letter handling
-```
