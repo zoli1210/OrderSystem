@@ -90,4 +90,12 @@ public class OrdersController : ControllerBase
 
         return Ok(history);
     }
+
+    [HttpGet("{id:guid}/email-history")]
+    public async Task<IActionResult> GetEmailHistory(Guid id, CancellationToken cancellationToken)
+    {
+        var history = await _orderService.GetEmailHistoryAsync(id, cancellationToken);
+
+        return Ok(history);
+    }
 }

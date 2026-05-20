@@ -34,4 +34,9 @@ public interface IOrderService
     Task<IReadOnlyList<UserOrderHistoryResponse>> GetUserHistoryAsync(
         CancellationToken cancellationToken
     );
+
+    Task<IReadOnlyList<EmailNotificationHistoryResponse>> GetEmailHistoryAsync(
+        Guid orderId,
+        CancellationToken cancellationToken
+    );
 }

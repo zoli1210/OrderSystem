@@ -25,6 +25,10 @@ public static class PersistenceDependencyInjection
 
         services.AddScoped<IOrderRepository, OrderRepository>();
         services.AddScoped<IOrderStatusHistoryRepository, OrderStatusHistoryRepository>();
+        services.AddScoped<
+            IEmailNotificationHistoryRepository,
+            EmailNotificationHistoryRepository
+        >();
 
         return services;
     }

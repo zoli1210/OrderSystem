@@ -17,18 +17,21 @@ public class OrderService : IOrderService
     private readonly IOrderMessageSender _orderMessageSender;
     private readonly ICurrentUserService _currentUserService;
     private readonly IOrderStatusHistoryRepository _statusHistoryRepository;
+    private readonly IEmailNotificationHistoryRepository _emailHistoryRepository;
 
     public OrderService(
         IOrderRepository orderRepository,
         IOrderMessageSender orderMessageSender,
         ICurrentUserService currentUserService,
-        IOrderStatusHistoryRepository statusHistoryRepository
+        IOrderStatusHistoryRepository statusHistoryRepository,
+        IEmailNotificationHistoryRepository emailHistoryRepository
     )
     {
         _orderRepository = orderRepository;
         _orderMessageSender = orderMessageSender;
         _currentUserService = currentUserService;
         _statusHistoryRepository = statusHistoryRepository;
+        _emailHistoryRepository = emailHistoryRepository;
     }
 
     public async Task<OrderResponse> CreateAsync(
@@ -342,5 +345,42 @@ public class OrderService : IOrderService
                     : [],
             })
             .ToList();
+    }
+
+    public async Task<IReadOnlyList<EmailNotificationHistoryResponse>> GetEmailHistoryAsync(
+        Guid orderId,
+        CancellationToken cancellationToken
+    )
+    {
+        var order = await _orderRepository.GetByIdAsync(orderId, cancellationToken);
+
+        if (order is null)
+        {
+            throw new NotFoundException("Order not found");
+        }
+
+        EnsureUserCanAccessOrder(order);
+
+        var histories = await _emailHistoryRepository.GetByOrderIdAsync(orderId, cancellationToken);
+
+        return histories.Select(MapToEmailHistoryResponse).ToList();
+    }
+
+    private static EmailNotificationHistoryResponse MapToEmailHistoryResponse(
+        EmailNotificationHistory history
+    )
+    {
+        return new EmailNotificationHistoryResponse
+        {
+            Id = history.Id,
+            OrderId = history.OrderId,
+            Recipient = history.Recipient,
+            Subject = history.Subject,
+            Status = history.Status,
+            CreatedAtUtc = history.CreatedAtUtc,
+            SentAtUtc = history.SentAtUtc,
+            FailedAtUtc = history.FailedAtUtc,
+            ErrorMessage = history.ErrorMessage,
+        };
     }
 }

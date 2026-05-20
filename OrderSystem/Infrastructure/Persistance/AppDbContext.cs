@@ -13,6 +13,8 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<Order> Orders => Set<Order>();
 
     public DbSet<OrderStatusHistory> OrderStatusHistories => Set<OrderStatusHistory>();
+    public DbSet<EmailNotificationHistory> EmailNotificationHistories =>
+        Set<EmailNotificationHistory>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
