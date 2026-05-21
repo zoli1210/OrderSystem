@@ -29,6 +29,10 @@ The API project is responsible for:
 - publishing messages to Azure Service Bus
 - exposing dead-letter inspection and retry endpoints
 - exposing health check endpoints
+- AI Knowledge Assistant with RAG
+- Supabase pgvector based vector search
+- Automatic documentation source seeding
+- Automatic documentation ingestion and embedding generation
 
 ### OrderSystem.AzureFunctions
 
@@ -68,6 +72,26 @@ The Azure Functions project is responsible for:
     EmailNotificationFunction
       ↓
     Azure Communication Services
+
+## AI / RAG Flow
+
+    knowledge-sources.json
+      ↓
+    Automatic source seeding
+      ↓
+    Supabase: knowledge_sources
+      ↓
+    Background documentation ingestion
+      ↓
+    OpenAI embeddings
+      ↓
+    Supabase: knowledge_documents with pgvector
+      ↓
+    Vector search
+      ↓
+    OpenAI response generation
+      ↓
+    AI answer with sources
 
 ## Main Components
 
@@ -143,6 +167,47 @@ The system uses two Azure Service Bus queues:
 
 `email-notification` is used after successful payment processing.
 
+## AI Knowledge Assistant
+
+The project includes an AI Knowledge Assistant based on Retrieval-Augmented Generation.
+
+It uses OpenAI embeddings and Supabase pgvector to answer questions based on indexed technical documentation.
+
+The source list is stored in the project as a versioned JSON file:
+
+    Infrastructure/Supabase/KnowledgeSources/knowledge-sources.json
+
+During application startup, the API automatically seeds the configured knowledge sources into Supabase.
+
+The background ingestion process then:
+
+    reads active knowledge sources
+    downloads documentation pages
+    extracts readable text from HTML
+    splits the content into chunks
+    creates embeddings with OpenAI
+    stores the chunks and embeddings in Supabase
+
+The RAG flow uses two Supabase tables:
+
+    knowledge_sources
+    → stores the configured documentation sources
+
+    knowledge_documents
+    → stores the chunked and embedded searchable content
+
+The main endpoint is:
+
+    POST /ai/knowledge/ask
+
+Example request:
+
+    {
+      "question": "What are Azure Service Bus dead-letter queues used for?"
+    }
+
+The response contains an AI-generated answer and the source documents used during retrieval.
+
 ## Dead-letter Handling
 
 Azure Service Bus dead-letter functionality is used for failed messages.
@@ -179,6 +244,9 @@ Available endpoints:
     GET    /dead-letters/emails
     POST   /dead-letters/orders/{sequenceNumber}/retry
     POST   /dead-letters/emails/{sequenceNumber}/retry
+
+    POST   /ai/knowledge/ask
+    POST   /ai/knowledge/documents
 
     GET    /health
 
@@ -232,6 +300,18 @@ Required configuration values include:
     CommunicationServices:SenderAddress
     ApplicationInsights:ConnectionString
     APPLICATIONINSIGHTS_CONNECTION_STRING
+
+AI configuration:
+
+    OpenAI:ApiKey
+    OpenAI:EmbeddingModel
+    OpenAI:ChatModel
+    OpenAI:DefaultMatchCount
+
+Supabase configuration:
+
+    Supabase:Url
+    Supabase:SecretKey
 
 ## Local Development
 
