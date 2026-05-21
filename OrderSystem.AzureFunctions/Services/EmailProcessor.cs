@@ -1,5 +1,6 @@
 ﻿using System.Text.Json;
 using Microsoft.Extensions.Logging;
+using OrderSystem.Domain.Entities;
 using OrderSystem.Infrastructure.Messaging.Messages;
 using OrderSystem.Infrastructure.Persistence.Repositories;
 using OrderSystem.Modules.Email.Services;
@@ -11,15 +12,18 @@ public class EmailProcessor : IEmailProcessor
     private readonly IOrderRepository _orderRepository;
     private readonly IEmailService _emailService;
     private readonly ILogger<EmailProcessor> _logger;
+    private readonly IEmailNotificationHistoryRepository _emailHistoryRepository;
 
     public EmailProcessor(
         IOrderRepository orderRepository,
         IEmailService emailService,
+        IEmailNotificationHistoryRepository emailHistoryRepository,
         ILogger<EmailProcessor> logger
     )
     {
         _orderRepository = orderRepository;
         _emailService = emailService;
+        _emailHistoryRepository = emailHistoryRepository;
         _logger = logger;
     }
 
@@ -51,17 +55,46 @@ public class EmailProcessor : IEmailProcessor
             return;
         }
 
-        await _emailService.SendAsync(emailMessage, cancellationToken);
-
-        order.MarkEmailAsSent();
-
-        await _orderRepository.UpdateAsync(order, cancellationToken);
-        await _orderRepository.SaveChangesAsync(cancellationToken);
-
-        _logger.LogInformation(
-            "Email sent. OrderId: {OrderId}, Recipient: {Recipient}",
+        var emailHistory = new EmailNotificationHistory(
             emailMessage.OrderId,
-            emailMessage.CustomerEmail
+            emailMessage.CustomerEmail,
+            emailMessage.Subject,
+            emailMessage.Body
         );
+
+        await _emailHistoryRepository.AddAsync(emailHistory, cancellationToken);
+
+        try
+        {
+            await _emailService.SendAsync(emailMessage, cancellationToken);
+
+            emailHistory.MarkAsSent();
+
+            order.MarkEmailAsSent();
+
+            await _orderRepository.UpdateAsync(order, cancellationToken);
+            await _orderRepository.SaveChangesAsync(cancellationToken);
+
+            _logger.LogInformation(
+                "Email notification processed. OrderId: {OrderId}, Email: {Email}",
+                emailMessage.OrderId,
+                emailMessage.CustomerEmail
+            );
+        }
+        catch (Exception exception)
+        {
+            emailHistory.MarkAsFailed(exception.Message);
+
+            await _orderRepository.SaveChangesAsync(cancellationToken);
+
+            _logger.LogError(
+                exception,
+                "Email notification failed. OrderId: {OrderId}, Email: {Email}",
+                emailMessage.OrderId,
+                emailMessage.CustomerEmail
+            );
+
+            throw;
+        }
     }
 }

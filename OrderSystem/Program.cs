@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.OpenApi.Models;
 using OrderSystem.Infrastructure.DependencyInjection;
 using OrderSystem.Infrastructure.HealthChecks;
+using OrderSystem.Modules.AI.Seed;
 using OrderSystem.Modules.Auth.Seed;
 using OrderSystem.Modules.Orders.Validators;
 
@@ -62,12 +63,15 @@ builder.Services.AddApplicationServices();
 builder.Services.AddMessaging(builder.Configuration);
 builder.Services.AddAuth(builder.Configuration);
 builder.Services.AddProjectHealthChecks();
+builder.Services.AddAiServices(builder.Configuration);
 
 builder.Services.AddApplicationInsightsTelemetry();
 
 var app = builder.Build();
 
 await AuthSeeder.SeedAsync(app.Services, app.Environment);
+
+await AiKnowledgeSeeder.SeedAsync(app.Services, app.Logger);
 
 if (app.Environment.IsDevelopment())
 {

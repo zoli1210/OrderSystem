@@ -37,7 +37,14 @@
 
   <ItemGroup>
     <Folder Include="Domain\ValueObjects\" />
+    <Folder Include="Infrastructure\Supabase\Migrations\" />
+    <Folder Include="Infrastructure\Supabase\KnowledgeSources\" />
     <Folder Include="Shared\Interfaces\" />
     <Folder Include="Shared\Helpers\" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Update="Infrastructure\Supabase\KnowledgeSources\knowledge-sources.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 </Project>

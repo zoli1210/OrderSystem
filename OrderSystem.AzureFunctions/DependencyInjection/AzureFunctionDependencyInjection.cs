@@ -44,6 +44,10 @@ public static class AzureFunctionsDependencyInjection
 
         services.AddScoped<IOrderRepository, OrderRepository>();
         services.AddScoped<IOrderStatusHistoryRepository, OrderStatusHistoryRepository>();
+        services.AddScoped<
+            IEmailNotificationHistoryRepository,
+            EmailNotificationHistoryRepository
+        >();
 
         services.AddScoped<IPaymentService, PaymentService>();
         services.AddScoped<IPaymentProcessor, PaymentProcessor>();

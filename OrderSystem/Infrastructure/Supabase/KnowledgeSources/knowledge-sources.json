@@ -1,0 +1,38 @@
+[
+  {
+    "name": "Azure Service Bus Dead-letter Queues",
+    "url": "https://learn.microsoft.com/en-us/azure/service-bus-messaging/service-bus-dead-letter-queues",
+    "sourceType": "Url",
+    "refreshIntervalHours": 168
+  },
+  {
+    "name": "Azure Service Bus Message Transfers, Locks and Settlement",
+    "url": "https://learn.microsoft.com/en-us/azure/service-bus-messaging/message-transfers-locks-settlement",
+    "sourceType": "Url",
+    "refreshIntervalHours": 168
+  },
+  {
+    "name": "Azure Functions .NET Isolated Worker Guide",
+    "url": "https://learn.microsoft.com/en-us/azure/azure-functions/dotnet-isolated-process-guide",
+    "sourceType": "Url",
+    "refreshIntervalHours": 168
+  },
+  {
+    "name": "Application Insights Overview",
+    "url": "https://learn.microsoft.com/en-us/azure/azure-monitor/app/app-insights-overview",
+    "sourceType": "Url",
+    "refreshIntervalHours": 168
+  },
+  {
+    "name": "ASP.NET Core Authentication Overview",
+    "url": "https://learn.microsoft.com/en-us/aspnet/core/security/authentication/",
+    "sourceType": "Url",
+    "refreshIntervalHours": 168
+  },
+  {
+    "name": "Entity Framework Core Migrations Overview",
+    "url": "https://learn.microsoft.com/en-us/ef/core/managing-schemas/migrations/",
+    "sourceType": "Url",
+    "refreshIntervalHours": 168
+  }
+]
