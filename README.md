@@ -33,6 +33,8 @@ The API project is responsible for:
 - Supabase pgvector based vector search
 - Automatic documentation source seeding
 - Automatic documentation ingestion and embedding generation
+- AI Order Process Explainer using SQL order data, status history, email history, and vector-based documentation retrieval
+- Supabase Row Level Security for AI knowledge tables
 
 ### OrderSystem.AzureFunctions
 
@@ -75,6 +77,8 @@ The Azure Functions project is responsible for:
 
 ## AI / RAG Flow
 
+Documentation ingestion flow:
+
     knowledge-sources.json
       ↓
     Automatic source seeding
@@ -83,15 +87,49 @@ The Azure Functions project is responsible for:
       ↓
     Background documentation ingestion
       ↓
+    HTML extraction
+      ↓
+    Text chunking
+      ↓
     OpenAI embeddings
       ↓
     Supabase: knowledge_documents with pgvector
+
+Knowledge question flow:
+
+    User question
       ↓
-    Vector search
+    OpenAI embedding
+      ↓
+    Supabase vector search
+      ↓
+    Relevant documentation chunks
       ↓
     OpenAI response generation
       ↓
     AI answer with sources
+
+Order explanation flow:
+
+    OrderId + user question
+      ↓
+    SQL order lookup
+      ↓
+    Access control check
+      ↓
+    Status history lookup
+      ↓
+    Email notification history lookup
+      ↓
+    Question + order status embedding
+      ↓
+    Supabase vector search
+      ↓
+    Structured SQL context + documentation context
+      ↓
+    OpenAI response generation
+      ↓
+    AI order explanation
 
 ## Main Components
 
@@ -196,6 +234,13 @@ The RAG flow uses two Supabase tables:
     knowledge_documents
     → stores the chunked and embedded searchable content
 
+Row Level Security is enabled for both AI knowledge tables:
+
+    knowledge_sources
+    knowledge_documents
+
+The application accesses these tables through the backend using a Supabase secret/service key. Client applications do not access the Supabase vector tables directly.
+
 The main endpoint is:
 
     POST /ai/knowledge/ask
@@ -207,6 +252,56 @@ Example request:
     }
 
 The response contains an AI-generated answer and the source documents used during retrieval.
+
+## AI Order Process Explainer
+
+The project also includes an AI Order Process Explainer.
+
+This feature explains the current lifecycle state of a specific order by combining structured SQL data with vector-based documentation retrieval.
+
+It uses SQL data as the source of truth for what actually happened:
+
+    order details
+    current order status
+    order status history
+    email notification history
+
+It uses vector-retrieved documentation only as supporting context to explain:
+
+    statuses
+    transitions
+    asynchronous processing
+    payment behavior
+    email behavior
+    messaging behavior
+
+The feature does not assume that an order has failed. It can explain completed, waiting, processing, failed, or cancelled orders.
+
+The answer is adapted to the user's question:
+
+    narrow question  → short, direct answer
+    status question  → current status only
+    email question   → email notification information
+    process question → lifecycle explanation
+    failure question → relevant failure or waiting reason
+
+The main endpoint is:
+
+    POST /ai/orders/{orderId}/explain
+
+Example request:
+
+    {
+      "question": "What is the current status of this order?"
+    }
+
+Example request for a broader explanation:
+
+    {
+      "question": "Explain the full lifecycle of this order and whether any manual action is needed."
+    }
+
+The response contains an AI-generated explanation and the source documents used during retrieval.
 
 ## Dead-letter Handling
 
@@ -247,6 +342,7 @@ Available endpoints:
 
     POST   /ai/knowledge/ask
     POST   /ai/knowledge/documents
+    POST   /ai/orders/{orderId}/explain
 
     GET    /health
 
@@ -312,6 +408,9 @@ Supabase configuration:
 
     Supabase:Url
     Supabase:SecretKey
+
+The Supabase secret key is backend-only and must not be exposed to client applications.
+Supabase Row Level Security is enabled for the AI knowledge tables.
 
 ## Local Development
 
