@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using OrderSystem.Modules.AI.DTOs;
 using OrderSystem.Modules.AI.Services.Documents;
 using OrderSystem.Modules.AI.Services.Knowledge;
+using OrderSystem.Modules.AI.Services.OrderExplanation;
 using OrderSystem.Modules.Auth;
 
 namespace OrderSystem.Controllers;
@@ -14,14 +15,20 @@ public class AiController : ControllerBase
 {
     private readonly IAiKnowledgeService _aiKnowledgeService;
     private readonly IKnowledgeDocumentIngestionService _ingestionService;
+    private readonly IOrderExplanationService _orderExplanationService;
+    private readonly ILogger<AiController> _logger;
 
     public AiController(
         IAiKnowledgeService aiKnowledgeService,
-        IKnowledgeDocumentIngestionService ingestionService
+        IKnowledgeDocumentIngestionService ingestionService,
+        IOrderExplanationService orderExplanationService,
+        ILogger<AiController> logger
     )
     {
         _aiKnowledgeService = aiKnowledgeService;
         _ingestionService = ingestionService;
+        _orderExplanationService = orderExplanationService;
+        _logger = logger;
     }
 
     [HttpPost("knowledge/ask")]
@@ -45,5 +52,23 @@ public class AiController : ControllerBase
         await _ingestionService.CreateAsync(request, cancellationToken);
 
         return Accepted(new { message = "Knowledge document created." });
+    }
+
+    [HttpPost("orders/{orderId:guid}/explain")]
+    public async Task<IActionResult> ExplainOrder(
+        Guid orderId,
+        ExplainOrderRequest request,
+        CancellationToken cancellationToken
+    )
+    {
+        _logger.LogInformation("AI order explanation requested. OrderId: {OrderId}", orderId);
+
+        var response = await _orderExplanationService.ExplainAsync(
+            orderId,
+            request,
+            cancellationToken
+        );
+
+        return Ok(response);
     }
 }

@@ -9,4 +9,11 @@ public interface IChatCompletionService
         IReadOnlyList<KnowledgeDocumentMatch> contextDocuments,
         CancellationToken cancellationToken
     );
+
+    Task<string> GenerateOrderExplanationAsync(
+        string question,
+        string orderContext,
+        IReadOnlyList<KnowledgeDocumentMatch> contextDocuments,
+        CancellationToken cancellationToken
+    );
 }

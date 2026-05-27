@@ -4,6 +4,7 @@ using OrderSystem.Modules.AI.Services;
 using OrderSystem.Modules.AI.Services.Documents;
 using OrderSystem.Modules.AI.Services.Ingestion;
 using OrderSystem.Modules.AI.Services.Knowledge;
+using OrderSystem.Modules.AI.Services.OrderExplanation;
 using OrderSystem.Modules.AI.Services.Shared;
 using OrderSystem.Modules.AI.Services.Sources;
 
@@ -70,6 +71,7 @@ public static class AiDependencyInjection
         services.AddScoped<IAiKnowledgeService, AiKnowledgeService>();
         services.AddScoped<IKnowledgeSourceIngestionService, KnowledgeSourceIngestionService>();
         services.AddHostedService<AiKnowledgeIngestionHostedService>();
+        services.AddScoped<IOrderExplanationService, OrderExplanationService>();
 
         return services;
     }
