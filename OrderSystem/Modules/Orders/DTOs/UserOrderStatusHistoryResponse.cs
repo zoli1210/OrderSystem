@@ -11,4 +11,6 @@ public class UserOrderStatusHistoryItemResponse
     public DateTime ChangedAtUtc { get; set; }
 
     public string ChangedByUserId { get; set; } = string.Empty;
+
+    public string? Note { get; set; }
 }

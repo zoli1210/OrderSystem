@@ -1,11 +1,9 @@
 ﻿using OrderSystem.Domain.Entities;
-using OrderSystem.Domain.Enums;
 using OrderSystem.Infrastructure.Messaging;
 using OrderSystem.Infrastructure.Messaging.Messages;
 using OrderSystem.Infrastructure.Persistence.Repositories;
 using OrderSystem.Modules.Auth.Services;
 using OrderSystem.Modules.Orders.DTOs;
-using OrderSystem.Modules.Payments.Services;
 using OrderSystem.Shared.Pagination;
 
 namespace OrderSystem.Modules.Orders.Services;
@@ -13,7 +11,6 @@ namespace OrderSystem.Modules.Orders.Services;
 public class OrderService : IOrderService
 {
     private readonly IOrderRepository _orderRepository;
-    private readonly IPaymentService _paymentService;
     private readonly IOrderMessageSender _orderMessageSender;
     private readonly ICurrentUserService _currentUserService;
     private readonly IOrderStatusHistoryRepository _statusHistoryRepository;
@@ -85,27 +82,6 @@ public class OrderService : IOrderService
         return MapToResponse(order);
     }
 
-    private static OrderResponse MapToResponse(Order order)
-    {
-        return new OrderResponse
-        {
-            Id = order.Id,
-            CustomerName = order.CustomerName,
-            CreatedByUserId = order.CreatedByUserId,
-            CustomerEmail = order.CustomerEmail,
-            TotalAmount = order.TotalAmount,
-            Currency = order.Currency,
-            Description = order.Description,
-            Status = order.Status,
-            CreatedAtUtc = order.CreatedAtUtc,
-            EmailSentAtUtc = order.EmailSentAtUtc,
-            UpdatedAtUtc = order.UpdatedAtUtc,
-            UpdatedByUserId = order.UpdatedByUserId,
-            CancelledAtUtc = order.CancelledAtUtc,
-            CancellationReason = order.CancellationReason,
-        };
-    }
-
     public async Task<PagedResponse<OrderResponse>> GetAllAsync(
         GetOrdersQuery query,
         CancellationToken cancellationToken
@@ -139,29 +115,6 @@ public class OrderService : IOrderService
         };
     }
 
-    private static string NormalizeSortBy(string? sortBy)
-    {
-        var allowedSortFields = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-        {
-            "createdAtUtc",
-            "totalAmount",
-            "status",
-            "customerName",
-        };
-
-        if (string.IsNullOrWhiteSpace(sortBy))
-        {
-            return "createdAtUtc";
-        }
-
-        return allowedSortFields.Contains(sortBy) ? sortBy : "createdAtUtc";
-    }
-
-    private static string NormalizeSortOrder(string? sortOrder)
-    {
-        return string.Equals(sortOrder, "asc", StringComparison.OrdinalIgnoreCase) ? "asc" : "desc";
-    }
-
     public async Task<OrderResponse> CancelAsync(
         Guid id,
         CancelOrderRequest request,
@@ -189,7 +142,13 @@ public class OrderService : IOrderService
         order.Cancel(request.Reason, currentUserId);
 
         await _statusHistoryRepository.AddAsync(
-            new OrderStatusHistory(order.Id, previousStatus, order.Status, currentUserId),
+            new OrderStatusHistory(
+                order.Id,
+                previousStatus,
+                order.Status,
+                currentUserId,
+                request.Reason
+            ),
             cancellationToken
         );
 
@@ -197,19 +156,6 @@ public class OrderService : IOrderService
         await _orderRepository.SaveChangesAsync(cancellationToken);
 
         return MapToResponse(order);
-    }
-
-    private void EnsureUserCanAccessOrder(Order order)
-    {
-        if (_currentUserService.IsAdmin)
-        {
-            return;
-        }
-
-        if (order.CreatedByUserId != _currentUserService.UserId)
-        {
-            throw new UnauthorizedAccessException("You are not allowed to access this order.");
-        }
     }
 
     public async Task<IReadOnlyList<OrderStatusHistoryResponse>> GetStatusHistoryAsync(
@@ -229,19 +175,6 @@ public class OrderService : IOrderService
         var history = await _statusHistoryRepository.GetByOrderIdAsync(orderId, cancellationToken);
 
         return history.Select(MapToStatusHistoryResponse).ToList();
-    }
-
-    private static OrderStatusHistoryResponse MapToStatusHistoryResponse(OrderStatusHistory history)
-    {
-        return new OrderStatusHistoryResponse
-        {
-            Id = history.Id,
-            OrderId = history.OrderId,
-            FromStatus = history.FromStatus,
-            ToStatus = history.ToStatus,
-            ChangedAtUtc = history.ChangedAtUtc,
-            ChangedByUserId = history.ChangedByUserId,
-        };
     }
 
     public async Task<OrderResponse> RetryPaymentAsync(Guid id, CancellationToken cancellationToken)
@@ -267,7 +200,13 @@ public class OrderService : IOrderService
         order.RetryPayment(currentUserId);
 
         await _statusHistoryRepository.AddAsync(
-            new OrderStatusHistory(order.Id, previousStatus, order.Status, currentUserId),
+            new OrderStatusHistory(
+                order.Id,
+                previousStatus,
+                order.Status,
+                currentUserId,
+                "Payment retry started."
+            ),
             cancellationToken
         );
 
@@ -324,6 +263,7 @@ public class OrderService : IOrderService
                             ToStatus = history.ToStatus,
                             ChangedAtUtc = history.ChangedAtUtc,
                             ChangedByUserId = history.ChangedByUserId,
+                            Note = history.Note,
                         })
                         .ToList()
             );
@@ -340,6 +280,14 @@ public class OrderService : IOrderService
                 CurrentStatus = order.Status,
                 CreatedAtUtc = order.CreatedAtUtc,
                 UpdatedAtUtc = order.UpdatedAtUtc,
+
+                TrackingNumber = order.TrackingNumber,
+                PreparationStartedAtUtc = order.PreparationStartedAtUtc,
+                ReadyForShipmentAtUtc = order.ReadyForShipmentAtUtc,
+                ShippedAtUtc = order.ShippedAtUtc,
+                DeliveredAtUtc = order.DeliveredAtUtc,
+                ReturnedAtUtc = order.ReturnedAtUtc,
+
                 StatusHistory = historiesByOrderId.TryGetValue(order.Id, out var orderHistory)
                     ? orderHistory
                     : [],
@@ -366,6 +314,61 @@ public class OrderService : IOrderService
         return histories.Select(MapToEmailHistoryResponse).ToList();
     }
 
+    private void EnsureUserCanAccessOrder(Order order)
+    {
+        if (_currentUserService.IsAdmin)
+        {
+            return;
+        }
+
+        if (order.CreatedByUserId != _currentUserService.UserId)
+        {
+            throw new UnauthorizedAccessException("You are not allowed to access this order.");
+        }
+    }
+
+    private static OrderResponse MapToResponse(Order order)
+    {
+        return new OrderResponse
+        {
+            Id = order.Id,
+            CustomerName = order.CustomerName,
+            CreatedByUserId = order.CreatedByUserId,
+            CustomerEmail = order.CustomerEmail,
+            TotalAmount = order.TotalAmount,
+            Currency = order.Currency,
+            Description = order.Description,
+            Status = order.Status,
+            CreatedAtUtc = order.CreatedAtUtc,
+            EmailSentAtUtc = order.EmailSentAtUtc,
+            UpdatedAtUtc = order.UpdatedAtUtc,
+            UpdatedByUserId = order.UpdatedByUserId,
+            CancelledAtUtc = order.CancelledAtUtc,
+            CancellationReason = order.CancellationReason,
+
+            TrackingNumber = order.TrackingNumber,
+            PreparationStartedAtUtc = order.PreparationStartedAtUtc,
+            ReadyForShipmentAtUtc = order.ReadyForShipmentAtUtc,
+            ShippedAtUtc = order.ShippedAtUtc,
+            DeliveredAtUtc = order.DeliveredAtUtc,
+            ReturnedAtUtc = order.ReturnedAtUtc,
+        };
+    }
+
+    private static OrderStatusHistoryResponse MapToStatusHistoryResponse(OrderStatusHistory history)
+    {
+        return new OrderStatusHistoryResponse
+        {
+            Id = history.Id,
+            OrderId = history.OrderId,
+            FromStatus = history.FromStatus,
+            ToStatus = history.ToStatus,
+            ChangedAtUtc = history.ChangedAtUtc,
+            ChangedByUserId = history.ChangedByUserId,
+            Note = history.Note,
+        };
+    }
+
     private static EmailNotificationHistoryResponse MapToEmailHistoryResponse(
         EmailNotificationHistory history
     )
@@ -382,5 +385,28 @@ public class OrderService : IOrderService
             FailedAtUtc = history.FailedAtUtc,
             ErrorMessage = history.ErrorMessage,
         };
+    }
+
+    private static string NormalizeSortBy(string? sortBy)
+    {
+        var allowedSortFields = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "createdAtUtc",
+            "totalAmount",
+            "status",
+            "customerName",
+        };
+
+        if (string.IsNullOrWhiteSpace(sortBy))
+        {
+            return "createdAtUtc";
+        }
+
+        return allowedSortFields.Contains(sortBy) ? sortBy : "createdAtUtc";
+    }
+
+    private static string NormalizeSortOrder(string? sortOrder)
+    {
+        return string.Equals(sortOrder, "asc", StringComparison.OrdinalIgnoreCase) ? "asc" : "desc";
     }
 }

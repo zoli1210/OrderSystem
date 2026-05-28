@@ -32,6 +32,18 @@ public class Order
 
     public string? CancellationReason { get; private set; }
 
+    public string? TrackingNumber { get; private set; }
+
+    public DateTime? PreparationStartedAtUtc { get; private set; }
+
+    public DateTime? ReadyForShipmentAtUtc { get; private set; }
+
+    public DateTime? ShippedAtUtc { get; private set; }
+
+    public DateTime? DeliveredAtUtc { get; private set; }
+
+    public DateTime? ReturnedAtUtc { get; private set; }
+
     private Order() { }
 
     public Order(
@@ -58,72 +70,148 @@ public class Order
 
     public void StartPaymentProcessing(string updatedByUserId)
     {
-        if (Status != OrderStatus.Pending)
-        {
-            throw new InvalidOperationException(
-                $"Payment processing cannot be started from status {Status}."
-            );
-        }
-
-        Status = OrderStatus.PaymentProcessing;
-        SetUpdated(updatedByUserId);
+        ChangeStatus(OrderStatus.PaymentProcessing, updatedByUserId);
     }
 
     public void MarkAsPaid(string updatedByUserId)
     {
-        if (Status != OrderStatus.PaymentProcessing)
-        {
-            throw new InvalidOperationException(
-                $"Order cannot be marked as paid from status {Status}."
-            );
-        }
-
-        Status = OrderStatus.Paid;
-        SetUpdated(updatedByUserId);
+        ChangeStatus(OrderStatus.Paid, updatedByUserId);
     }
 
     public void MarkPaymentAsFailed(string updatedByUserId)
     {
-        if (Status != OrderStatus.PaymentProcessing)
+        ChangeStatus(OrderStatus.Failed, updatedByUserId);
+    }
+
+    public void RetryPayment(string updatedByUserId)
+    {
+        ChangeStatus(OrderStatus.Pending, updatedByUserId);
+    }
+
+    public void StartPreparing(string updatedByUserId)
+    {
+        ChangeStatus(OrderStatus.Preparing, updatedByUserId);
+    }
+
+    public void MarkAsReadyForShipment(string updatedByUserId)
+    {
+        ChangeStatus(OrderStatus.ReadyForShipment, updatedByUserId);
+    }
+
+    public void MarkAsShipped(string updatedByUserId, string trackingNumber)
+    {
+        if (string.IsNullOrWhiteSpace(trackingNumber))
         {
             throw new InvalidOperationException(
-                $"Payment cannot be marked as failed from status {Status}."
+                "Tracking number is required when marking an order as shipped."
             );
         }
 
-        Status = OrderStatus.PaymentFailed;
-        SetUpdated(updatedByUserId);
+        ChangeStatus(OrderStatus.Shipped, updatedByUserId, trackingNumber);
+    }
+
+    public void MarkAsDelivered(string updatedByUserId)
+    {
+        ChangeStatus(OrderStatus.Delivered, updatedByUserId);
+    }
+
+    public void MarkAsReturned(string updatedByUserId)
+    {
+        ChangeStatus(OrderStatus.Returned, updatedByUserId);
     }
 
     public void Cancel(string reason, string updatedByUserId)
     {
-        if (Status is OrderStatus.Paid or OrderStatus.PaymentProcessing or OrderStatus.Cancelled)
-        {
-            throw new InvalidOperationException($"Order cannot be cancelled from status {Status}.");
-        }
-
         if (string.IsNullOrWhiteSpace(reason))
         {
             throw new InvalidOperationException("Cancellation reason is required.");
         }
 
-        Status = OrderStatus.Cancelled;
+        ChangeStatus(OrderStatus.Cancelled, updatedByUserId);
+
         CancelledAtUtc = DateTime.UtcNow;
         CancellationReason = reason;
-        SetUpdated(updatedByUserId);
     }
 
-    public void RetryPayment(string updatedByUserId)
+    public void ChangeStatus(
+        OrderStatus targetStatus,
+        string updatedByUserId,
+        string? trackingNumber = null
+    )
     {
-        if (Status != OrderStatus.PaymentFailed)
+        if (Status == targetStatus)
+        {
+            return;
+        }
+
+        if (!IsValidTransition(Status, targetStatus))
         {
             throw new InvalidOperationException(
-                $"Payment retry cannot be started from status {Status}."
+                $"Invalid order status transition from {Status} to {targetStatus}."
             );
         }
 
-        Status = OrderStatus.Pending;
+        Status = targetStatus;
+
+        switch (targetStatus)
+        {
+            case OrderStatus.Preparing:
+                PreparationStartedAtUtc = DateTime.UtcNow;
+                break;
+
+            case OrderStatus.ReadyForShipment:
+                ReadyForShipmentAtUtc = DateTime.UtcNow;
+                break;
+
+            case OrderStatus.Shipped:
+                ShippedAtUtc = DateTime.UtcNow;
+                TrackingNumber = trackingNumber;
+                break;
+
+            case OrderStatus.Delivered:
+                DeliveredAtUtc = DateTime.UtcNow;
+                break;
+
+            case OrderStatus.Returned:
+                ReturnedAtUtc = DateTime.UtcNow;
+                break;
+        }
+
         SetUpdated(updatedByUserId);
+    }
+
+    private static bool IsValidTransition(OrderStatus currentStatus, OrderStatus targetStatus)
+    {
+        return currentStatus switch
+        {
+            OrderStatus.Pending => targetStatus
+                is OrderStatus.PaymentProcessing
+                    or OrderStatus.Cancelled,
+
+            OrderStatus.PaymentProcessing => targetStatus is OrderStatus.Paid or OrderStatus.Failed,
+
+            OrderStatus.Failed => targetStatus is OrderStatus.Pending or OrderStatus.Cancelled,
+
+            OrderStatus.Paid => targetStatus is OrderStatus.Preparing or OrderStatus.Cancelled,
+
+            OrderStatus.Preparing => targetStatus
+                is OrderStatus.ReadyForShipment
+                    or OrderStatus.Cancelled,
+
+            OrderStatus.ReadyForShipment => targetStatus
+                is OrderStatus.Shipped
+                    or OrderStatus.Cancelled,
+
+            OrderStatus.Shipped => targetStatus is OrderStatus.Delivered,
+
+            OrderStatus.Delivered => targetStatus is OrderStatus.Returned,
+
+            OrderStatus.Cancelled => false,
+
+            OrderStatus.Returned => false,
+
+            _ => false,
+        };
     }
 
     public bool IsEmailSent()

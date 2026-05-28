@@ -14,7 +14,9 @@ public class OrderStatusHistory
 
     public DateTime ChangedAtUtc { get; private set; }
 
-    public string ChangedByUserId { get; private set; } = string.Empty;
+    public string? ChangedByUserId { get; private set; }
+
+    public string? Note { get; private set; }
 
     private OrderStatusHistory() { }
 
@@ -22,14 +24,16 @@ public class OrderStatusHistory
         Guid orderId,
         OrderStatus fromStatus,
         OrderStatus toStatus,
-        string changedByUserId
+        string? changedByUserId,
+        string? note = null
     )
     {
         Id = Guid.NewGuid();
         OrderId = orderId;
         FromStatus = fromStatus;
         ToStatus = toStatus;
-        ChangedAtUtc = DateTime.UtcNow;
         ChangedByUserId = changedByUserId;
+        Note = note;
+        ChangedAtUtc = DateTime.UtcNow;
     }
 }

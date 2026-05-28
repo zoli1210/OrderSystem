@@ -14,7 +14,9 @@ public class OrderStatusHistoryRepository : IOrderStatusHistoryRepository
 
     public async Task AddAsync(OrderStatusHistory history, CancellationToken cancellationToken)
     {
-        await _dbContext.OrderStatusHistories.AddAsync(history, cancellationToken);
+        _dbContext.OrderStatusHistories.Add(history);
+
+        await _dbContext.SaveChangesAsync(cancellationToken);
     }
 
     public async Task<IReadOnlyList<OrderStatusHistory>> GetByOrderIdAsync(
@@ -28,13 +30,8 @@ public class OrderStatusHistoryRepository : IOrderStatusHistoryRepository
             .ToListAsync(cancellationToken);
     }
 
-    public async Task SaveChangesAsync(CancellationToken cancellationToken)
-    {
-        await _dbContext.SaveChangesAsync(cancellationToken);
-    }
-
     public async Task<IReadOnlyList<OrderStatusHistory>> GetByOrderIdsAsync(
-        IReadOnlyCollection<Guid> orderIds,
+        IReadOnlyList<Guid> orderIds,
         CancellationToken cancellationToken
     )
     {

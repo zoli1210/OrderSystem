@@ -12,8 +12,6 @@ public class OrderResponse
 
     public string CustomerEmail { get; set; } = string.Empty;
 
-    public DateTime? EmailSentAtUtc { get; set; }
-
     public decimal TotalAmount { get; set; }
 
     public string Currency { get; set; } = string.Empty;
@@ -24,6 +22,8 @@ public class OrderResponse
 
     public DateTime CreatedAtUtc { get; set; }
 
+    public DateTime? EmailSentAtUtc { get; set; }
+
     public DateTime? UpdatedAtUtc { get; set; }
 
     public string? UpdatedByUserId { get; set; }
@@ -31,4 +31,16 @@ public class OrderResponse
     public DateTime? CancelledAtUtc { get; set; }
 
     public string? CancellationReason { get; set; }
+
+    public string? TrackingNumber { get; set; }
+
+    public DateTime? PreparationStartedAtUtc { get; set; }
+
+    public DateTime? ReadyForShipmentAtUtc { get; set; }
+
+    public DateTime? ShippedAtUtc { get; set; }
+
+    public DateTime? DeliveredAtUtc { get; set; }
+
+    public DateTime? ReturnedAtUtc { get; set; }
 }

@@ -16,6 +16,7 @@ public static class ApplicationDependencyInjection
         services.AddScoped<IRolePermissionService, RolePermissionService>();
 
         services.AddScoped<IOrderService, OrderService>();
+        services.AddScoped<IOrderStatusService, OrderStatusService>();
         services.AddScoped<IPaymentService, PaymentService>();
         services.AddScoped<IEmailService, AzureCommunicationEmailService>();
 

@@ -11,10 +11,12 @@ namespace OrderSystem.Controllers;
 public class OrdersController : ControllerBase
 {
     private readonly IOrderService _orderService;
+    private readonly IOrderStatusService _orderStatusService;
 
-    public OrdersController(IOrderService orderService)
+    public OrdersController(IOrderService orderService, IOrderStatusService orderStatusService)
     {
         _orderService = orderService;
+        _orderStatusService = orderStatusService;
     }
 
     [HttpPost]
@@ -97,5 +99,21 @@ public class OrdersController : ControllerBase
         var history = await _orderService.GetEmailHistoryAsync(id, cancellationToken);
 
         return Ok(history);
+    }
+
+    [HttpPatch("{orderId:guid}/status")]
+    public async Task<IActionResult> UpdateStatus(
+        Guid orderId,
+        UpdateOrderStatusRequest request,
+        CancellationToken cancellationToken
+    )
+    {
+        var response = await _orderStatusService.UpdateStatusAsync(
+            orderId,
+            request,
+            cancellationToken
+        );
+
+        return Ok(response);
     }
 }

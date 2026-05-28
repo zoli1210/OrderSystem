@@ -12,7 +12,9 @@ public class OrderStatusHistoryResponse
 
     public OrderStatus ToStatus { get; set; }
 
-    public DateTime ChangedAtUtc { get; set; }
+    public DateTime? ChangedAtUtc { get; set; }
 
-    public string ChangedByUserId { get; set; } = string.Empty;
+    public string? ChangedByUserId { get; set; }
+
+    public string? Note { get; set; }
 }

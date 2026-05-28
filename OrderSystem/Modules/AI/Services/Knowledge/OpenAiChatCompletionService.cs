@@ -132,7 +132,26 @@ public class OpenAiChatCompletionService : IChatCompletionService
             Use the structured order data as the source of truth.
             Use the retrieved documentation only as supporting context when it is needed to explain the meaning of a status, transition, asynchronous workflow, payment behavior, email behavior or messaging behavior.
 
+            Order status meaning:
+            - Pending means the order has been created and is waiting for payment processing.
+            - PaymentProcessing means the payment workflow is currently running.
+            - Paid means the payment completed successfully, but the full order process is not finished yet. Seller fulfillment may still need to happen.
+            - PaymentFailed means the payment workflow failed. The order may need a payment retry or cancellation.
+            - Preparing means the seller is preparing the order.
+            - ReadyForShipment means the order is packed and waiting to be handed over to the courier.
+            - Shipped means the package has been handed over to the courier.
+            - Delivered means the package has been delivered to the customer.
+            - Cancelled means the order was cancelled.
+            - Returned means the order was returned after delivery.
+
+            Do not say that the whole order process is completed only because the status is Paid. Paid only confirms successful payment.
+            Delivered is the final successful lifecycle status.
+
             Most important rule:
+
+            Do not say that the whole order process is completed only because the status is Paid. Paid only confirms successful payment.
+            Delivered is the final successful lifecycle status.
+
             Answer only what the user asked. Do not include extra lifecycle details, email details, process history, or recommended actions unless the question asks for them or they are necessary to avoid a misleading answer.
 
             Intent handling:

@@ -22,5 +22,18 @@ public class UserOrderHistoryResponse
 
     public DateTime? UpdatedAtUtc { get; set; }
 
-    public IReadOnlyList<UserOrderStatusHistoryItemResponse> StatusHistory { get; set; } = [];
+    public string? TrackingNumber { get; set; }
+
+    public DateTime? PreparationStartedAtUtc { get; set; }
+
+    public DateTime? ReadyForShipmentAtUtc { get; set; }
+
+    public DateTime? ShippedAtUtc { get; set; }
+
+    public DateTime? DeliveredAtUtc { get; set; }
+
+    public DateTime? ReturnedAtUtc { get; set; }
+
+    public IReadOnlyList<UserOrderStatusHistoryItemResponse> StatusHistory { get; set; } =
+        new List<UserOrderStatusHistoryItemResponse>();
 }
