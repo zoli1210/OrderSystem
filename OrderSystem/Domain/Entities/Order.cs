@@ -164,6 +164,13 @@ public class Order
                 break;
 
             case OrderStatus.Shipped:
+                if (string.IsNullOrWhiteSpace(trackingNumber))
+                {
+                    throw new InvalidOperationException(
+                        "Tracking number is required when marking an order as shipped."
+                    );
+                }
+
                 ShippedAtUtc = DateTime.UtcNow;
                 TrackingNumber = trackingNumber;
                 break;

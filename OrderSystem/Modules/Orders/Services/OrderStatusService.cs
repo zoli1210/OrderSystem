@@ -1,4 +1,5 @@
 ﻿using OrderSystem.Domain.Entities;
+using OrderSystem.Domain.Enums;
 using OrderSystem.Infrastructure.Persistence.Repositories;
 using OrderSystem.Modules.Auth.Services;
 using OrderSystem.Modules.Orders.DTOs;
@@ -49,7 +50,9 @@ public class OrderStatusService : IOrderStatusService
 
         var previousStatus = order.Status;
 
-        order.ChangeStatus(request.TargetStatus, currentUserId, request.TrackingNumber);
+        var trackingNumber = GenerateTrackingNumber(request);
+
+        order.ChangeStatus(request.TargetStatus, currentUserId, trackingNumber);
 
         await _statusHistoryRepository.AddAsync(
             new OrderStatusHistory(
@@ -72,5 +75,20 @@ public class OrderStatusService : IOrderStatusService
             TrackingNumber = order.TrackingNumber,
             Message = $"Order status changed from {previousStatus} to {order.Status}.",
         };
+    }
+
+    private static string? GenerateTrackingNumber(UpdateOrderStatusRequest request)
+    {
+        if (request.TargetStatus != OrderStatus.Shipped)
+        {
+            return request.TrackingNumber;
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.TrackingNumber))
+        {
+            return request.TrackingNumber;
+        }
+
+        return $"SHIP-{DateTime.UtcNow:yyyyMMdd}-{Guid.NewGuid().ToString("N")[..8].ToUpperInvariant()}";
     }
 }
