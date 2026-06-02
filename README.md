@@ -156,8 +156,10 @@ An order can have the following statuses:
     Pending
     PaymentProcessing
     Paid
-    PaymentFailed
-    Cancelled
+    Preparing
+    ReadyForShipment
+    Shipped
+    Delivered
 
 Order status changes are tracked separately through status history.
 

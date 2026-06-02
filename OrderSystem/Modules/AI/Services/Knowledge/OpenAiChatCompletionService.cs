@@ -144,12 +144,10 @@ public class OpenAiChatCompletionService : IChatCompletionService
             - Cancelled means the order was cancelled.
             - Returned means the order was returned after delivery.
 
-            Do not say that the whole order process is completed only because the status is Paid. Paid only confirms successful payment.
-            Delivered is the final successful lifecycle status.
-
             Most important rule:
 
             Do not say that the whole order process is completed only because the status is Paid. Paid only confirms successful payment.
+            Paid is not the final order status. It only means the payment flow completed successfully.
             Delivered is the final successful lifecycle status.
 
             Answer only what the user asked. Do not include extra lifecycle details, email details, process history, or recommended actions unless the question asks for them or they are necessary to avoid a misleading answer.

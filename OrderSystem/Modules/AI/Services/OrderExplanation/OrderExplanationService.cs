@@ -229,6 +229,15 @@ public class OrderExplanationService : IOrderExplanationService
         builder.AppendLine($"CancelledAtUtc: {order.CancelledAtUtc}");
         builder.AppendLine($"CancellationReason: {order.CancellationReason}");
         builder.AppendLine($"EmailSentAtUtc: {order.EmailSentAtUtc}");
+        builder.AppendLine($"TrackingNumber: {order.TrackingNumber}");
+        builder.AppendLine($"PreparationStartedAtUtc: {order.PreparationStartedAtUtc}");
+        builder.AppendLine($"ReadyForShipmentAtUtc: {order.ReadyForShipmentAtUtc}");
+        builder.AppendLine($"ShippedAtUtc: {order.ShippedAtUtc}");
+        builder.AppendLine($"DeliveredAtUtc: {order.DeliveredAtUtc}");
+        builder.AppendLine($"ReturnedAtUtc: {order.ReturnedAtUtc}");
+        builder.AppendLine(
+            $"- {history.FromStatus} → {history.ToStatus} at {history.ChangedAtUtc}, changed by {history.ChangedByUserId}, note: {history.Note}"
+        );
 
         builder.AppendLine();
         builder.AppendLine("Status history:");
