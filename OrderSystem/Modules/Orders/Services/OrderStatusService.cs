@@ -11,16 +11,19 @@ public class OrderStatusService : IOrderStatusService
     private readonly IOrderRepository _orderRepository;
     private readonly IOrderStatusHistoryRepository _statusHistoryRepository;
     private readonly ICurrentUserService _currentUserService;
+    private readonly ITrackingNumberGenerator _trackingNumberGenerator;
 
     public OrderStatusService(
         IOrderRepository orderRepository,
         IOrderStatusHistoryRepository statusHistoryRepository,
-        ICurrentUserService currentUserService
+        ICurrentUserService currentUserService,
+        ITrackingNumberGenerator trackingNumberGenerator
     )
     {
         _orderRepository = orderRepository;
         _statusHistoryRepository = statusHistoryRepository;
         _currentUserService = currentUserService;
+        _trackingNumberGenerator = trackingNumberGenerator;
     }
 
     public async Task<UpdateOrderStatusResponse> UpdateStatusAsync(
@@ -77,7 +80,7 @@ public class OrderStatusService : IOrderStatusService
         };
     }
 
-    private static string? GenerateTrackingNumber(UpdateOrderStatusRequest request)
+    private string? GenerateTrackingNumber(UpdateOrderStatusRequest request)
     {
         if (request.TargetStatus != OrderStatus.Shipped)
         {
@@ -89,6 +92,6 @@ public class OrderStatusService : IOrderStatusService
             return request.TrackingNumber;
         }
 
-        return $"SHIP-{DateTime.UtcNow:yyyyMMdd}-{Guid.NewGuid().ToString("N")[..8].ToUpperInvariant()}";
+        return _trackingNumberGenerator.Generate();
     }
 }

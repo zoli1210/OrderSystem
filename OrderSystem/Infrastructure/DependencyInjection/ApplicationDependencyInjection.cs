@@ -19,6 +19,7 @@ public static class ApplicationDependencyInjection
         services.AddScoped<IOrderStatusService, OrderStatusService>();
         services.AddScoped<IPaymentService, PaymentService>();
         services.AddScoped<IEmailService, AzureCommunicationEmailService>();
+        services.AddScoped<ITrackingNumberGenerator, MockTrackingNumberGenerator>();
 
         return services;
     }
