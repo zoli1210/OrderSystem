@@ -10,8 +10,12 @@
       "default": "Warning",
       "Host": "Warning",
       "Function": "Warning",
+
       "Function.PaymentProcessorFunction": "Information",
-      "Function.PaymentProcessorFunction.User": "Information"
+      "Function.PaymentProcessorFunction.User": "Information",
+
+      "Function.OrderStatusChangedFunction": "Information",
+      "Function.OrderStatusChangedFunction.User": "Information"
     }
   }
 }

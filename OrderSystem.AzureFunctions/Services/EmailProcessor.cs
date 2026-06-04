@@ -9,6 +9,8 @@ namespace OrderSystem.AzureFunctions.Services;
 
 public class EmailProcessor : IEmailProcessor
 {
+    private const string PaymentConfirmationEmailType = "PaymentConfirmation";
+
     private readonly IOrderRepository _orderRepository;
     private readonly IEmailService _emailService;
     private readonly ILogger<EmailProcessor> _logger;
@@ -29,7 +31,10 @@ public class EmailProcessor : IEmailProcessor
 
     public async Task ProcessAsync(string message, CancellationToken cancellationToken)
     {
-        var emailMessage = JsonSerializer.Deserialize<EmailNotificationMessage>(message);
+        var emailMessage = JsonSerializer.Deserialize<EmailNotificationMessage>(
+            message,
+            new JsonSerializerOptions { PropertyNameCaseInsensitive = true }
+        );
 
         if (emailMessage is null)
         {
@@ -45,11 +50,12 @@ public class EmailProcessor : IEmailProcessor
             );
         }
 
-        if (order.IsEmailSent())
+        if (ShouldSkipEmail(order, emailMessage))
         {
             _logger.LogWarning(
-                "Email sending skipped because email was already sent. OrderId: {OrderId}",
-                order.Id
+                "Email sending skipped because payment confirmation email was already sent. OrderId: {OrderId}, EmailType: {EmailType}",
+                order.Id,
+                emailMessage.EmailType
             );
 
             return;
@@ -70,15 +76,20 @@ public class EmailProcessor : IEmailProcessor
 
             emailHistory.MarkAsSent();
 
-            order.MarkEmailAsSent();
+            if (IsPaymentConfirmationEmail(emailMessage))
+            {
+                order.MarkEmailAsSent();
+            }
 
             await _orderRepository.UpdateAsync(order, cancellationToken);
+
             await _orderRepository.SaveChangesAsync(cancellationToken);
 
             _logger.LogInformation(
-                "Email notification processed. OrderId: {OrderId}, Email: {Email}",
+                "Email notification processed. OrderId: {OrderId}, Email: {Email}, EmailType: {EmailType}",
                 emailMessage.OrderId,
-                emailMessage.CustomerEmail
+                emailMessage.CustomerEmail,
+                emailMessage.EmailType
             );
         }
         catch (Exception exception)
@@ -89,12 +100,27 @@ public class EmailProcessor : IEmailProcessor
 
             _logger.LogError(
                 exception,
-                "Email notification failed. OrderId: {OrderId}, Email: {Email}",
+                "Email notification failed. OrderId: {OrderId}, Email: {Email}, EmailType: {EmailType}",
                 emailMessage.OrderId,
-                emailMessage.CustomerEmail
+                emailMessage.CustomerEmail,
+                emailMessage.EmailType
             );
 
             throw;
         }
+    }
+
+    private static bool ShouldSkipEmail(Order order, EmailNotificationMessage emailMessage)
+    {
+        return IsPaymentConfirmationEmail(emailMessage) && order.IsEmailSent();
+    }
+
+    private static bool IsPaymentConfirmationEmail(EmailNotificationMessage emailMessage)
+    {
+        return string.Equals(
+            emailMessage.EmailType,
+            PaymentConfirmationEmailType,
+            StringComparison.OrdinalIgnoreCase
+        );
     }
 }

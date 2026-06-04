@@ -1,5 +1,7 @@
 ﻿using OrderSystem.Domain.Entities;
 using OrderSystem.Domain.Enums;
+using OrderSystem.Infrastructure.Messaging;
+using OrderSystem.Infrastructure.Messaging.Messages;
 using OrderSystem.Infrastructure.Persistence.Repositories;
 using OrderSystem.Modules.Auth.Services;
 using OrderSystem.Modules.Orders.DTOs;
@@ -12,18 +14,21 @@ public class OrderStatusService : IOrderStatusService
     private readonly IOrderStatusHistoryRepository _statusHistoryRepository;
     private readonly ICurrentUserService _currentUserService;
     private readonly ITrackingNumberGenerator _trackingNumberGenerator;
+    private readonly IOrderMessageSender _orderMessageSender;
 
     public OrderStatusService(
         IOrderRepository orderRepository,
         IOrderStatusHistoryRepository statusHistoryRepository,
         ICurrentUserService currentUserService,
-        ITrackingNumberGenerator trackingNumberGenerator
+        ITrackingNumberGenerator trackingNumberGenerator,
+        IOrderMessageSender orderMessageSender
     )
     {
         _orderRepository = orderRepository;
         _statusHistoryRepository = statusHistoryRepository;
         _currentUserService = currentUserService;
         _trackingNumberGenerator = trackingNumberGenerator;
+        _orderMessageSender = orderMessageSender;
     }
 
     public async Task<UpdateOrderStatusResponse> UpdateStatusAsync(
@@ -69,6 +74,19 @@ public class OrderStatusService : IOrderStatusService
         );
 
         await _orderRepository.UpdateAsync(order, cancellationToken);
+
+        await _orderMessageSender.SendOrderStatusChangedAsync(
+            new OrderStatusChangedMessage
+            {
+                OrderId = order.Id,
+                CustomerEmail = order.CustomerEmail,
+                PreviousStatus = previousStatus,
+                CurrentStatus = order.Status,
+                TrackingNumber = order.TrackingNumber,
+                Note = request.Note,
+            },
+            cancellationToken
+        );
 
         return new UpdateOrderStatusResponse
         {

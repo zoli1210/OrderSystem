@@ -235,9 +235,6 @@ public class OrderExplanationService : IOrderExplanationService
         builder.AppendLine($"ShippedAtUtc: {order.ShippedAtUtc}");
         builder.AppendLine($"DeliveredAtUtc: {order.DeliveredAtUtc}");
         builder.AppendLine($"ReturnedAtUtc: {order.ReturnedAtUtc}");
-        builder.AppendLine(
-            $"- {history.FromStatus} → {history.ToStatus} at {history.ChangedAtUtc}, changed by {history.ChangedByUserId}, note: {history.Note}"
-        );
 
         builder.AppendLine();
         builder.AppendLine("Status history:");

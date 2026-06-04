@@ -6,12 +6,12 @@ namespace OrderSystem.Infrastructure.Messaging;
 
 public class AzureServiceBusOrderMessageSender : IOrderMessageSender
 {
-    private readonly ServiceBusClient _client;
+    private readonly ServiceBusClient _serviceBusClient;
     private readonly IConfiguration _configuration;
 
     public AzureServiceBusOrderMessageSender(ServiceBusClient client, IConfiguration configuration)
     {
-        _client = client;
+        _serviceBusClient = client;
         _configuration = configuration;
     }
 
@@ -22,7 +22,7 @@ public class AzureServiceBusOrderMessageSender : IOrderMessageSender
     {
         var queueName = _configuration["AzureServiceBus:OrderCreatedQueueName"];
 
-        var sender = _client.CreateSender(queueName);
+        var sender = _serviceBusClient.CreateSender(queueName);
 
         var body = JsonSerializer.Serialize(message);
 
@@ -31,6 +31,20 @@ public class AzureServiceBusOrderMessageSender : IOrderMessageSender
             ContentType = "application/json",
             Subject = "OrderCreated",
         };
+
+        await sender.SendMessageAsync(serviceBusMessage, cancellationToken);
+    }
+
+    public async Task SendOrderStatusChangedAsync(
+        OrderStatusChangedMessage message,
+        CancellationToken cancellationToken
+    )
+    {
+        var sender = _serviceBusClient.CreateSender("order-status-changed");
+
+        var body = JsonSerializer.Serialize(message);
+
+        var serviceBusMessage = new ServiceBusMessage(body) { ContentType = "application/json" };
 
         await sender.SendMessageAsync(serviceBusMessage, cancellationToken);
     }
