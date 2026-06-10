@@ -1,8 +1,11 @@
 ﻿using System.Text.Json;
 using Azure.Messaging.ServiceBus;
 using Microsoft.Azure.Functions.Worker;
+using Microsoft.DurableTask;
+using Microsoft.DurableTask.Client;
 using Microsoft.Extensions.Logging;
 using OrderSystem.AzureFunctions.Services;
+using OrderSystem.Domain.Enums;
 using OrderSystem.Infrastructure.Messaging;
 using OrderSystem.Infrastructure.Messaging.Messages;
 
@@ -25,10 +28,11 @@ public class OrderStatusChangedFunction
         _logger = logger;
     }
 
-    [Function("OrderStatusChangedFunction")]
+    [Function(nameof(OrderStatusChangedFunction))]
     public async Task RunAsync(
         [ServiceBusTrigger("order-status-changed", Connection = "AzureServiceBusConnection")]
             ServiceBusReceivedMessage message,
+        [DurableClient] DurableTaskClient durableClient,
         CancellationToken cancellationToken
     )
     {
@@ -44,6 +48,12 @@ public class OrderStatusChangedFunction
             _logger.LogWarning("Order status changed message could not be deserialized.");
             return;
         }
+
+        await HandleFulfillmentWorkflowAsync(
+            durableClient,
+            statusChangedMessage,
+            cancellationToken
+        );
 
         var email = _orderStatusEmailProcessor.BuildEmail(statusChangedMessage);
 
@@ -77,5 +87,114 @@ public class OrderStatusChangedFunction
             statusChangedMessage.CustomerEmail,
             email.Subject
         );
+    }
+
+    private async Task HandleFulfillmentWorkflowAsync(
+        DurableTaskClient durableClient,
+        OrderStatusChangedMessage message,
+        CancellationToken cancellationToken
+    )
+    {
+        if (message.CurrentStatus == OrderStatus.Paid)
+        {
+            await StartFulfillmentWorkflowAsync(durableClient, message, cancellationToken);
+
+            return;
+        }
+
+        if (!IsFulfillmentWorkflowEventStatus(message.CurrentStatus))
+        {
+            return;
+        }
+
+        await NotifyFulfillmentWorkflowAsync(durableClient, message, cancellationToken);
+    }
+
+    private async Task StartFulfillmentWorkflowAsync(
+        DurableTaskClient durableClient,
+        OrderStatusChangedMessage message,
+        CancellationToken cancellationToken
+    )
+    {
+        var instanceId = StartOrderFulfillmentWorkflowFunction.BuildInstanceId(message.OrderId);
+
+        try
+        {
+            await durableClient.ScheduleNewOrchestrationInstanceAsync(
+                nameof(OrderFulfillmentOrchestrator),
+                new OrderFulfillmentWorkflowInput
+                {
+                    OrderId = message.OrderId,
+                    CustomerEmail = message.CustomerEmail,
+                },
+                new StartOrchestrationOptions { InstanceId = instanceId },
+                cancellationToken
+            );
+
+            _logger.LogInformation(
+                "Fulfillment workflow started. OrderId: {OrderId}, InstanceId: {InstanceId}",
+                message.OrderId,
+                instanceId
+            );
+        }
+        catch (Exception exception)
+        {
+            _logger.LogWarning(
+                exception,
+                "Fulfillment workflow could not be started. OrderId: {OrderId}, InstanceId: {InstanceId}",
+                message.OrderId,
+                instanceId
+            );
+        }
+    }
+
+    private async Task NotifyFulfillmentWorkflowAsync(
+        DurableTaskClient durableClient,
+        OrderStatusChangedMessage message,
+        CancellationToken cancellationToken
+    )
+    {
+        var instanceId = StartOrderFulfillmentWorkflowFunction.BuildInstanceId(message.OrderId);
+
+        try
+        {
+            await durableClient.RaiseEventAsync(
+                instanceId,
+                message.CurrentStatus.ToString(),
+                new OrderFulfillmentStatusEvent
+                {
+                    OrderId = message.OrderId,
+                    Status = message.CurrentStatus,
+                    ChangedAtUtc = DateTime.UtcNow,
+                    Note = message.Note,
+                },
+                cancellationToken
+            );
+
+            _logger.LogInformation(
+                "Fulfillment workflow event raised. OrderId: {OrderId}, InstanceId: {InstanceId}, EventName: {EventName}",
+                message.OrderId,
+                instanceId,
+                message.CurrentStatus
+            );
+        }
+        catch (Exception exception)
+        {
+            _logger.LogWarning(
+                exception,
+                "Fulfillment workflow event could not be raised. OrderId: {OrderId}, Status: {Status}",
+                message.OrderId,
+                message.CurrentStatus
+            );
+        }
+    }
+
+    private static bool IsFulfillmentWorkflowEventStatus(OrderStatus status)
+    {
+        return status
+            is OrderStatus.Preparing
+                or OrderStatus.ReadyForShipment
+                or OrderStatus.Shipped
+                or OrderStatus.Delivered;
     }
 }

@@ -57,6 +57,7 @@ public static class AzureFunctionsDependencyInjection
         services.AddScoped<IEmailService, AzureCommunicationEmailService>();
         services.AddScoped<IEmailProcessor, EmailProcessor>();
         services.AddScoped<IOrderStatusEmailProcessor, OrderStatusEmailProcessorService>();
+        services.AddScoped<IOrderMessageSender, AzureServiceBusOrderMessageSender>();
 
         return services;
     }

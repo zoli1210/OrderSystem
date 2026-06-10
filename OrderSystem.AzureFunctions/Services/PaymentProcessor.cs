@@ -17,13 +17,15 @@ public class PaymentProcessor : IPaymentProcessor
     private readonly ILogger<PaymentProcessor> _logger;
     private const string SystemUserId = "system";
     private readonly IOrderStatusHistoryRepository _statusHistoryRepository;
+    private readonly IOrderMessageSender _orderMessageSender;
 
     public PaymentProcessor(
         IOrderRepository orderRepository,
         IPaymentService paymentService,
         IEmailMessageSender emailMessageSender,
         IOrderStatusHistoryRepository statusHistoryRepository,
-        ILogger<PaymentProcessor> logger
+        ILogger<PaymentProcessor> logger,
+        IOrderMessageSender orderMessageSender
     )
     {
         _orderRepository = orderRepository;
@@ -31,6 +33,7 @@ public class PaymentProcessor : IPaymentProcessor
         _emailMessageSender = emailMessageSender;
         _statusHistoryRepository = statusHistoryRepository;
         _logger = logger;
+        _orderMessageSender = orderMessageSender;
     }
 
     public async Task ProcessAsync(string message, CancellationToken cancellationToken)
@@ -88,6 +91,33 @@ public class PaymentProcessor : IPaymentProcessor
             {
                 order.MarkAsPaid(SystemUserId);
 
+                await _statusHistoryRepository.AddAsync(
+                    new OrderStatusHistory(
+                        order.Id,
+                        previousPaymentStatus,
+                        order.Status,
+                        SystemUserId,
+                        "Payment completed."
+                    ),
+                    cancellationToken
+                );
+
+                await _orderRepository.UpdateAsync(order, cancellationToken);
+                await _orderRepository.SaveChangesAsync(cancellationToken);
+
+                await _orderMessageSender.SendOrderStatusChangedAsync(
+                    new OrderStatusChangedMessage
+                    {
+                        OrderId = order.Id,
+                        CustomerEmail = order.CustomerEmail,
+                        PreviousStatus = previousPaymentStatus,
+                        CurrentStatus = order.Status,
+                        TrackingNumber = order.TrackingNumber,
+                        Note = "Payment completed.",
+                    },
+                    cancellationToken
+                );
+
                 await _emailMessageSender.SendEmailNotificationAsync(
                     new EmailNotificationMessage
                     {
@@ -95,6 +125,7 @@ public class PaymentProcessor : IPaymentProcessor
                         CustomerEmail = order.CustomerEmail,
                         Subject = "Order payment successful",
                         Body = $"Your order {order.Id} has been paid successfully.",
+                        EmailType = "PaymentConfirmation",
                     },
                     cancellationToken
                 );
@@ -108,15 +139,21 @@ public class PaymentProcessor : IPaymentProcessor
             else
             {
                 order.MarkPaymentAsFailed(SystemUserId);
+
+                await _statusHistoryRepository.AddAsync(
+                    new OrderStatusHistory(
+                        order.Id,
+                        previousPaymentStatus,
+                        order.Status,
+                        SystemUserId,
+                        "Payment failed."
+                    ),
+                    cancellationToken
+                );
+
+                await _orderRepository.UpdateAsync(order, cancellationToken);
+                await _orderRepository.SaveChangesAsync(cancellationToken);
             }
-
-            await _statusHistoryRepository.AddAsync(
-                new OrderStatusHistory(order.Id, previousPaymentStatus, order.Status, SystemUserId),
-                cancellationToken
-            );
-
-            await _orderRepository.UpdateAsync(order, cancellationToken);
-            await _orderRepository.SaveChangesAsync(cancellationToken);
         }
         catch
         {
@@ -125,7 +162,13 @@ public class PaymentProcessor : IPaymentProcessor
             order.MarkPaymentAsFailed(SystemUserId);
 
             await _statusHistoryRepository.AddAsync(
-                new OrderStatusHistory(order.Id, previousFailedStatus, order.Status, SystemUserId),
+                new OrderStatusHistory(
+                    order.Id,
+                    previousFailedStatus,
+                    order.Status,
+                    SystemUserId,
+                    "Payment processing failed."
+                ),
                 cancellationToken
             );
 
