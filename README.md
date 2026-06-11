@@ -45,6 +45,8 @@ The Azure Functions project is responsible for:
 - publishing email notification messages
 - processing email notification messages
 - sending emails through Azure Communication Services
+- starting and monitoring the Durable fulfillment workflow
+- handling fulfillment timeout alerts
 
 ## Main Flow
 
@@ -54,6 +56,8 @@ The Azure Functions project is responsible for:
     → PaymentProcessorFunction processes the message
     → Order status changes to PaymentProcessing
     → Order status changes to Paid or PaymentFailed
+    → OrderStatusChangedMessage sent to order-status-changed queue
+    → Durable fulfillment workflow starts when the order reaches Paid status
     → EmailNotificationMessage sent to email-notification queue
     → EmailNotificationFunction sends the email
 
@@ -69,11 +73,123 @@ The Azure Functions project is responsible for:
       ↓
     PaymentProcessorFunction
       ↓
+    Azure Service Bus: order-status-changed
+      ↓
+    OrderStatusChangedFunction
+      ↓
+    Durable Fulfillment Workflow
+      ↓
     Azure Service Bus: email-notification
       ↓
     EmailNotificationFunction
       ↓
     Azure Communication Services
+
+## Durable Fulfillment Workflow
+
+The project includes a Durable Functions based fulfillment workflow that monitors the order lifecycle after a successful payment.
+
+The workflow starts automatically when an order reaches the `Paid` status. From that point, the orchestration waits for human/admin-driven status changes and reacts to them through Durable external events.
+
+    Payment successful
+      ↓
+    Order status changes to Paid
+      ↓
+    OrderStatusChangedMessage sent to order-status-changed queue
+      ↓
+    OrderStatusChangedFunction starts OrderFulfillmentOrchestrator
+      ↓
+    Workflow waits for admin-driven fulfillment status changes
+
+The monitored fulfillment flow is:
+
+    Paid
+      ↓
+    Preparing
+      ↓
+    ReadyForShipment
+      ↓
+    Shipped
+      ↓
+    Delivered
+
+### Human Interaction Pattern
+
+The fulfillment workflow uses the Durable Functions human interaction pattern.
+
+Admin or seller actions still happen through the existing order status endpoint:
+
+    PATCH /orders/{orderId}/status
+
+When a status change happens, the API publishes an `OrderStatusChangedMessage`. The `OrderStatusChangedFunction` then raises the matching Durable external event for the running workflow instance.
+
+Example:
+
+    Admin changes order status to Preparing
+      ↓
+    OrderStatusChangedFunction receives the status changed message
+      ↓
+    Durable external event "Preparing" is raised
+      ↓
+    OrderFulfillmentOrchestrator continues to the next step
+
+The API and domain layer remain the source of truth for order status changes. Durable Functions only coordinate the long-running fulfillment workflow.
+
+### Timeout Alerts
+
+The workflow contains timeout handling for fulfillment steps.
+
+If an expected status change does not happen within the configured time window, an alert activity is triggered and an admin alert email is queued through the existing email notification pipeline.
+
+Configured timeout rules:
+
+    Paid → Preparing: 48 hours
+    Preparing → ReadyForShipment: 24 hours
+    ReadyForShipment → Shipped: 24 hours
+    Shipped → Delivered: 5 days
+
+Alert flow:
+
+    Expected status not received in time
+      ↓
+    OrderFulfillmentAlertActivity runs
+      ↓
+    Admin alert email is sent through the email-notification queue
+      ↓
+    Workflow continues waiting for the expected human action
+
+### Durable Components
+
+    OrderFulfillmentOrchestrator
+    → Durable orchestration that waits for fulfillment status events
+
+    OrderFulfillmentAlertActivity
+    → Sends admin alert emails when a fulfillment step times out
+
+    OrderStatusChangedFunction
+    → Starts the workflow on Paid status
+    → Raises Durable external events for fulfillment status changes
+    → Keeps the existing email notification flow running
+
+    StartOrderFulfillmentWorkflowFunction
+    → Optional HTTP-triggered starter function for manual/admin testing
+
+    OrderFulfillmentWorkflowInput
+    → Input model for the orchestration
+
+    OrderFulfillmentStatusEvent
+    → External event payload used by Durable Functions
+
+    OrderFulfillmentAlert
+    → Alert payload used by the activity
+
+### Storage Requirement
+
+Durable Functions require Azure Storage for orchestration state management.
+
+The Azure Functions project must have a valid `AzureWebJobsStorage` value configured in `local.settings.json` or in the deployed Function App configuration.
+
+The `FulfillmentAlertEmail` setting is used as the recipient for timeout alert emails.
 
 ## AI / RAG Flow
 
@@ -156,10 +272,13 @@ An order can have the following statuses:
     Pending
     PaymentProcessing
     Paid
+    PaymentFailed
     Preparing
     ReadyForShipment
     Shipped
     Delivered
+    Cancelled
+    Returned
 
 Order status changes are tracked separately through status history.
 
@@ -198,14 +317,17 @@ Orders are connected to the authenticated user.
 
 ## Messaging
 
-The system uses two Azure Service Bus queues:
+The system uses three Azure Service Bus queues:
 
     order-created
+    order-status-changed
     email-notification
 
 `order-created` is used to start payment processing.
 
-`email-notification` is used after successful payment processing.
+`order-status-changed` is used to publish order status changes, start the Durable fulfillment workflow on `Paid`, and raise external events for fulfillment status changes.
+
+`email-notification` is used for payment, fulfillment, and timeout alert emails.
 
 ## AI Knowledge Assistant
 
@@ -333,6 +455,7 @@ Available endpoints:
     POST   /orders
     GET    /orders
     GET    /orders/{id}
+    PATCH  /orders/{id}/status
     POST   /orders/{id}/cancel
     POST   /orders/{id}/retry-payment
     GET    /orders/{id}/status-history
@@ -392,7 +515,10 @@ Required configuration values include:
     AzureServiceBus:ConnectionString
     AzureServiceBus:OrderCreatedQueueName
     AzureServiceBus:EmailNotificationQueueName
+    AzureServiceBus:OrderStatusChangedQueueName
     AzureServiceBusConnection
+    AzureWebJobsStorage
+    FulfillmentAlertEmail
     SqlConnectionString
     CommunicationServices:ConnectionString
     CommunicationServices:SenderAddress
@@ -423,6 +549,18 @@ Both projects must run during local testing:
 
 The expected successful order status flow is:
 
-    Pending → PaymentProcessing → Paid
+    Pending → PaymentProcessing → Paid → Preparing → ReadyForShipment → Shipped → Delivered
 
 If payment processing fails, Azure Service Bus retries the message and eventually moves it to the dead-letter queue.
+
+Durable Functions require Azure Storage during local development. Use either a real Azure Storage connection string in `AzureWebJobsStorage` or a local storage emulator.
+
+For local Durable fulfillment testing:
+
+    1. Start the API project
+    2. Start the Azure Functions project
+    3. Create an order
+    4. Let payment processing move the order to Paid
+    5. Confirm that the Durable fulfillment workflow starts
+    6. Update the order status through the API
+    7. Confirm that the Durable external event is raised
