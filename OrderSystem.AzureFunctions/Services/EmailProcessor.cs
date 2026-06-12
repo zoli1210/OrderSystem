@@ -41,6 +41,11 @@ public class EmailProcessor : IEmailProcessor
             throw new InvalidOperationException("Invalid email notification message received.");
         }
 
+        if (string.IsNullOrWhiteSpace(emailMessage.EmailType))
+        {
+            emailMessage.EmailType = PaymentConfirmationEmailType;
+        }
+
         var order = await _orderRepository.GetByIdAsync(emailMessage.OrderId, cancellationToken);
 
         if (order is null)
@@ -50,11 +55,17 @@ public class EmailProcessor : IEmailProcessor
             );
         }
 
-        if (ShouldSkipEmail(order, emailMessage))
+        var alreadySent = await _emailHistoryRepository.ExistsSentAsync(
+            emailMessage.OrderId,
+            emailMessage.EmailType,
+            cancellationToken
+        );
+
+        if (alreadySent)
         {
             _logger.LogWarning(
-                "Email sending skipped because payment confirmation email was already sent. OrderId: {OrderId}, EmailType: {EmailType}",
-                order.Id,
+                "Email sending skipped because this email type was already sent. OrderId: {OrderId}, EmailType: {EmailType}",
+                emailMessage.OrderId,
                 emailMessage.EmailType
             );
 
@@ -65,7 +76,8 @@ public class EmailProcessor : IEmailProcessor
             emailMessage.OrderId,
             emailMessage.CustomerEmail,
             emailMessage.Subject,
-            emailMessage.Body
+            emailMessage.Body,
+            emailMessage.EmailType
         );
 
         await _emailHistoryRepository.AddAsync(emailHistory, cancellationToken);
@@ -108,11 +120,6 @@ public class EmailProcessor : IEmailProcessor
 
             throw;
         }
-    }
-
-    private static bool ShouldSkipEmail(Order order, EmailNotificationMessage emailMessage)
-    {
-        return IsPaymentConfirmationEmail(emailMessage) && order.IsEmailSent();
     }
 
     private static bool IsPaymentConfirmationEmail(EmailNotificationMessage emailMessage)

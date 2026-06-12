@@ -81,11 +81,12 @@ public class OrderStatusChangedFunction
         );
 
         _logger.LogInformation(
-            "Order status email notification message sent. OrderId: {OrderId}, Status: {Status}, Recipient: {Recipient}, Subject: {Subject}",
+            "Order status email notification message sent. OrderId: {OrderId}, Status: {Status}, Recipient: {Recipient}, Subject: {Subject}, EmailType: {EmailType}",
             statusChangedMessage.OrderId,
             statusChangedMessage.CurrentStatus,
             statusChangedMessage.CustomerEmail,
-            email.Subject
+            email.Subject,
+            email.EmailType
         );
     }
 
@@ -120,6 +121,24 @@ public class OrderStatusChangedFunction
 
         try
         {
+            var existingInstance = await durableClient.GetInstanceAsync(
+                instanceId,
+                getInputsAndOutputs: false,
+                cancellationToken
+            );
+
+            if (existingInstance is not null)
+            {
+                _logger.LogInformation(
+                    "Fulfillment workflow start skipped because an instance already exists. OrderId: {OrderId}, InstanceId: {InstanceId}, RuntimeStatus: {RuntimeStatus}",
+                    message.OrderId,
+                    instanceId,
+                    existingInstance.RuntimeStatus
+                );
+
+                return;
+            }
+
             await durableClient.ScheduleNewOrchestrationInstanceAsync(
                 nameof(OrderFulfillmentOrchestrator),
                 new OrderFulfillmentWorkflowInput
