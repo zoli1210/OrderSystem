@@ -19,6 +19,8 @@ public class EmailNotificationHistoryConfiguration
 
         builder.Property(x => x.Body).IsRequired();
 
+        builder.Property(x => x.EmailType).IsRequired().HasMaxLength(100).HasDefaultValue("Legacy");
+
         builder.Property(x => x.Status).IsRequired();
 
         builder.Property(x => x.CreatedAtUtc).IsRequired();
@@ -32,5 +34,12 @@ public class EmailNotificationHistoryConfiguration
         builder.HasIndex(x => x.OrderId);
         builder.HasIndex(x => x.Status);
         builder.HasIndex(x => x.CreatedAtUtc);
+
+        builder.HasIndex(x => new
+        {
+            x.OrderId,
+            x.EmailType,
+            x.Status,
+        });
     }
 }

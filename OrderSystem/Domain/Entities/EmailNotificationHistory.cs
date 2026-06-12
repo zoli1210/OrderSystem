@@ -14,6 +14,8 @@ public class EmailNotificationHistory
 
     public string Body { get; private set; } = string.Empty;
 
+    public string EmailType { get; private set; } = string.Empty;
+
     public EmailNotificationStatus Status { get; private set; }
 
     public DateTime CreatedAtUtc { get; private set; }
@@ -26,13 +28,25 @@ public class EmailNotificationHistory
 
     private EmailNotificationHistory() { }
 
-    public EmailNotificationHistory(Guid orderId, string recipient, string subject, string body)
+    public EmailNotificationHistory(
+        Guid orderId,
+        string recipient,
+        string subject,
+        string body,
+        string emailType
+    )
     {
+        if (string.IsNullOrWhiteSpace(emailType))
+        {
+            throw new ArgumentException("Email type is required.", nameof(emailType));
+        }
+
         Id = Guid.NewGuid();
         OrderId = orderId;
         Recipient = recipient;
         Subject = subject;
         Body = body;
+        EmailType = emailType;
         Status = EmailNotificationStatus.Pending;
         CreatedAtUtc = DateTime.UtcNow;
     }
