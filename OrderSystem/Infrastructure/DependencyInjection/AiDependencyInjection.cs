@@ -1,12 +1,13 @@
-﻿using OrderSystem.Infrastructure.Options;
+﻿using OrderSystem.Application.AI.Documents;
+using OrderSystem.Application.AI.Knowledge;
+using OrderSystem.Application.AI.OrderExplanation;
+using OrderSystem.Application.AI.Processing;
+using OrderSystem.Application.AI.Providers.OpenAi;
+using OrderSystem.Application.AI.Providers.Supabase;
+using OrderSystem.Application.AI.Providers.WebContent;
+using OrderSystem.Application.AI.Sources;
+using OrderSystem.Infrastructure.Options;
 using OrderSystem.Modules.AI.HostedServices;
-using OrderSystem.Modules.AI.Services;
-using OrderSystem.Modules.AI.Services.Documents;
-using OrderSystem.Modules.AI.Services.Ingestion;
-using OrderSystem.Modules.AI.Services.Knowledge;
-using OrderSystem.Modules.AI.Services.OrderExplanation;
-using OrderSystem.Modules.AI.Services.Shared;
-using OrderSystem.Modules.AI.Services.Sources;
 
 namespace OrderSystem.Infrastructure.DependencyInjection;
 

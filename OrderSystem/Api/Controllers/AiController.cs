@@ -1,9 +1,9 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using OrderSystem.Application.AI.Documents;
+using OrderSystem.Application.AI.Knowledge;
+using OrderSystem.Application.AI.OrderExplanation;
 using OrderSystem.Modules.AI.DTOs;
-using OrderSystem.Modules.AI.Services.Documents;
-using OrderSystem.Modules.AI.Services.Knowledge;
-using OrderSystem.Modules.AI.Services.OrderExplanation;
 using OrderSystem.Modules.Auth;
 
 namespace OrderSystem.Api.Controllers;
