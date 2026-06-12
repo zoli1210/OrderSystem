@@ -4,7 +4,7 @@ using OrderSystem.Modules.Auth;
 using OrderSystem.Modules.Auth.DTOs;
 using OrderSystem.Modules.Auth.Services;
 
-namespace OrderSystem.Controllers;
+namespace OrderSystem.Api.Controllers;
 
 [ApiController]
 [Route("auth")]

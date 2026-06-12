@@ -1,7 +1,7 @@
 ﻿using System.Text.Json;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
-namespace OrderSystem.Infrastructure.HealthChecks;
+namespace OrderSystem.Api.HealthCheck;
 
 public static class HealthCheckResponse
 {

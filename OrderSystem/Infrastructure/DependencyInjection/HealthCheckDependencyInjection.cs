@@ -1,4 +1,4 @@
-﻿using OrderSystem.Infrastructure.HealthChecks;
+﻿using OrderSystem.Api.HealthCheck;
 using OrderSystem.Infrastructure.Persistence;
 
 namespace OrderSystem.Infrastructure.DependencyInjection;

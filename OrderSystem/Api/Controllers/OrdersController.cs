@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using OrderSystem.Modules.Orders.DTOs;
 using OrderSystem.Modules.Orders.Services;
 
-namespace OrderSystem.Controllers;
+namespace OrderSystem.Api.Controllers;
 
 [ApiController]
 [Route("orders")]

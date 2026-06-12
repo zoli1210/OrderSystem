@@ -1,4 +1,4 @@
-﻿namespace OrderSystem.Shared.Pagination;
+﻿namespace OrderSystem.Common.Pagination;
 
 public class PagedResponse<T>
 {

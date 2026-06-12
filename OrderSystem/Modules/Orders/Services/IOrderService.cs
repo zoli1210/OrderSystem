@@ -1,6 +1,6 @@
-﻿using OrderSystem.Domain.Enums;
+﻿using OrderSystem.Common.Pagination;
+using OrderSystem.Domain.Enums;
 using OrderSystem.Modules.Orders.DTOs;
-using OrderSystem.Shared.Pagination;
 
 namespace OrderSystem.Modules.Orders.Services;
 

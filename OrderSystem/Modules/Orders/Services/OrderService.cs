@@ -1,10 +1,10 @@
-﻿using OrderSystem.Domain.Entities;
+﻿using OrderSystem.Common.Pagination;
+using OrderSystem.Domain.Entities;
 using OrderSystem.Infrastructure.Messaging;
 using OrderSystem.Infrastructure.Messaging.Messages;
 using OrderSystem.Infrastructure.Persistence.Repositories;
 using OrderSystem.Modules.Auth.Services;
 using OrderSystem.Modules.Orders.DTOs;
-using OrderSystem.Shared.Pagination;
 
 namespace OrderSystem.Modules.Orders.Services;
 

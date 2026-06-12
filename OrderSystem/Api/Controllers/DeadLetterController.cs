@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using OrderSystem.Infrastructure.Messaging;
 using OrderSystem.Modules.Auth;
 
-namespace OrderSystem.Controllers;
+namespace OrderSystem.Api.Controllers;
 
 [ApiController]
 [Route("dead-letters")]

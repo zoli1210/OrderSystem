@@ -1,6 +1,6 @@
 ﻿using Microsoft.Extensions.Diagnostics.HealthChecks;
 
-namespace OrderSystem.Infrastructure.HealthChecks;
+namespace OrderSystem.Api.HealthCheck;
 
 public class AzureServiceBusConfigurationHealthCheck : IHealthCheck
 {

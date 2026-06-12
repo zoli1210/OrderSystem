@@ -6,7 +6,7 @@ using OrderSystem.Modules.AI.Services.Knowledge;
 using OrderSystem.Modules.AI.Services.OrderExplanation;
 using OrderSystem.Modules.Auth;
 
-namespace OrderSystem.Controllers;
+namespace OrderSystem.Api.Controllers;
 
 [ApiController]
 [Route("ai")]
