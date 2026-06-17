@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using OrderSystem.Application.Orders.Contracts.Queries;
 using OrderSystem.Application.Orders.Contracts.Requests;
 using OrderSystem.Application.Orders.Contracts.Responses;
+using OrderSystem.Modules.Auth;
 using OrderSystem.Modules.Orders.Services;
 
 namespace OrderSystem.Api.Controllers;
@@ -115,6 +116,17 @@ public class OrdersController : ControllerBase
             request,
             cancellationToken
         );
+
+        return Ok(response);
+    }
+
+    [HttpGet("summary")]
+    [Authorize(Roles = AuthRoles.Admin)]
+    public async Task<ActionResult<OrderSummaryResponse>> GetSummary(
+        CancellationToken cancellationToken
+    )
+    {
+        var response = await _orderService.GetSummaryAsync(cancellationToken);
 
         return Ok(response);
     }

@@ -4,6 +4,7 @@ using OrderSystem.Application.Orders.Contracts.Responses;
 using OrderSystem.Application.Orders.Mapping;
 using OrderSystem.Common.Pagination;
 using OrderSystem.Domain.Entities;
+using OrderSystem.Domain.Enums;
 using OrderSystem.Infrastructure.Messaging;
 using OrderSystem.Infrastructure.Messaging.Messages;
 using OrderSystem.Infrastructure.Persistence.Repositories;
@@ -350,5 +351,54 @@ public class OrderService : IOrderService
     private static string NormalizeSortOrder(string? sortOrder)
     {
         return string.Equals(sortOrder, "asc", StringComparison.OrdinalIgnoreCase) ? "asc" : "desc";
+    }
+
+    public async Task<OrderSummaryResponse> GetSummaryAsync(CancellationToken cancellationToken)
+    {
+        if (!_currentUserService.IsAdmin)
+        {
+            throw new UnauthorizedAccessException("Only admins can view order summary.");
+        }
+
+        var utcNow = DateTime.UtcNow;
+
+        var summary = await _orderRepository.GetSummaryAsync(
+            todayStartUtc: utcNow.Date,
+            last7DaysStartUtc: utcNow.AddDays(-7),
+            cancellationToken
+        );
+
+        var statusCountsByStatus = summary.StatusCounts.ToDictionary(
+            statusCount => statusCount.Status,
+            statusCount => statusCount.Count
+        );
+
+        var ordersByStatus = Enum.GetValues<OrderStatus>()
+            .Select(status => new OrderStatusSummaryResponse
+            {
+                Status = status,
+                Count = statusCountsByStatus.GetValueOrDefault(status),
+            })
+            .ToList();
+
+        return new OrderSummaryResponse
+        {
+            TotalOrders = summary.TotalOrders,
+            OrdersByStatus = ordersByStatus,
+            RevenueByCurrency = summary
+                .RevenueByCurrency.Select(revenue => new OrderRevenueSummaryResponse
+                {
+                    Currency = revenue.Currency,
+                    TotalAmount = revenue.TotalAmount,
+                    AverageOrderValue = revenue.AverageOrderValue,
+                    OrderCount = revenue.OrderCount,
+                })
+                .ToList(),
+            FailedPaymentCount = statusCountsByStatus.GetValueOrDefault(OrderStatus.Failed),
+            CancelledOrderCount = statusCountsByStatus.GetValueOrDefault(OrderStatus.Cancelled),
+            OrdersCreatedToday = summary.OrdersCreatedToday,
+            OrdersCreatedLast7Days = summary.OrdersCreatedLast7Days,
+            GeneratedAtUtc = utcNow,
+        };
     }
 }

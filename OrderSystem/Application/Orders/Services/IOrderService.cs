@@ -41,4 +41,6 @@ public interface IOrderService
         Guid orderId,
         CancellationToken cancellationToken
     );
+
+    Task<OrderSummaryResponse> GetSummaryAsync(CancellationToken cancellationToken);
 }

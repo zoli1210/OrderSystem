@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using OrderSystem.Domain.Entities;
+using OrderSystem.Domain.Entities.OrderSummary;
 using OrderSystem.Domain.Enums;
 
 namespace OrderSystem.Infrastructure.Persistence.Repositories;
@@ -98,5 +99,66 @@ public class OrderRepository : IOrderRepository
     {
         _dbContext.Orders.Update(order);
         return Task.CompletedTask;
+    }
+
+    public async Task<OrderSummary> GetSummaryAsync(
+        DateTime todayStartUtc,
+        DateTime last7DaysStartUtc,
+        CancellationToken cancellationToken
+    )
+    {
+        var revenueStatuses = new[]
+        {
+            OrderStatus.Paid,
+            OrderStatus.Preparing,
+            OrderStatus.ReadyForShipment,
+            OrderStatus.Shipped,
+            OrderStatus.Delivered,
+        };
+
+        var ordersQuery = _dbContext.Orders.AsNoTracking();
+
+        var totalOrders = await ordersQuery.CountAsync(cancellationToken);
+
+        var statusCounts = await ordersQuery
+            .GroupBy(order => order.Status)
+            .Select(group => new OrderStatusCountReadModel
+            {
+                Status = group.Key,
+                Count = group.Count(),
+            })
+            .ToListAsync(cancellationToken);
+
+        var revenueByCurrency = await ordersQuery
+            .Where(order => revenueStatuses.Contains(order.Status))
+            .GroupBy(order => order.Currency)
+            .Select(group => new OrderRevenueSummaryReadModel
+            {
+                Currency = group.Key,
+                TotalAmount = group.Sum(order => order.TotalAmount),
+                AverageOrderValue = group.Average(order => order.TotalAmount),
+                OrderCount = group.Count(),
+            })
+            .OrderBy(summary => summary.Currency)
+            .ToListAsync(cancellationToken);
+
+        var ordersCreatedToday = await ordersQuery.CountAsync(
+            order => order.CreatedAtUtc >= todayStartUtc,
+            cancellationToken
+        );
+
+        var ordersCreatedLast7Days = await ordersQuery.CountAsync(
+            order => order.CreatedAtUtc >= last7DaysStartUtc,
+            cancellationToken
+        );
+
+        return new OrderSummary
+        {
+            TotalOrders = totalOrders,
+            StatusCounts = statusCounts,
+            RevenueByCurrency = revenueByCurrency,
+            OrdersCreatedToday = ordersCreatedToday,
+            OrdersCreatedLast7Days = ordersCreatedLast7Days,
+        };
     }
 }

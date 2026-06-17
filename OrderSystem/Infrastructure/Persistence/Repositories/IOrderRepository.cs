@@ -1,4 +1,5 @@
 ﻿using OrderSystem.Domain.Entities;
+using OrderSystem.Domain.Entities.OrderSummary;
 using OrderSystem.Domain.Enums;
 
 namespace OrderSystem.Infrastructure.Persistence.Repositories;
@@ -23,4 +24,10 @@ public interface IOrderRepository
     Task UpdateAsync(Order order, CancellationToken cancellationToken);
 
     Task<IReadOnlyList<Order>> GetByUserIdAsync(string userId, CancellationToken cancellationToken);
+
+    Task<OrderSummary> GetSummaryAsync(
+        DateTime todayStartUtc,
+        DateTime last7DaysStartUtc,
+        CancellationToken cancellationToken
+    );
 }
