@@ -116,7 +116,7 @@ Detailed documentation is available under the `docs` folder.
 - [Order processing flow](docs/processes/order-processing-flow.md)
 - [AI features](docs/ai/ai-features.md)
 - [Authentication and authorization](docs/security/authentication-authorization.md)
-- [Local development and configuration](docs/operations/local-development-and-configuration.md)
+- [Local development and configuration](docs/operation/local-development-and-configuration.md)
 
 ## Local Development
 
