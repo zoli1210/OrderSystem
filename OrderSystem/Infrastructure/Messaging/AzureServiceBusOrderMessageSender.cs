@@ -40,7 +40,16 @@ public class AzureServiceBusOrderMessageSender : IOrderMessageSender
         CancellationToken cancellationToken
     )
     {
-        var sender = _serviceBusClient.CreateSender("order-status-changed");
+        var queueName = _configuration["AzureServiceBus:OrderStatusChangedQueueName"];
+
+        if (string.IsNullOrWhiteSpace(queueName))
+        {
+            throw new InvalidOperationException(
+                "AzureServiceBus:OrderStatusChangedQueueName is missing."
+            );
+        }
+
+        await using var sender = _serviceBusClient.CreateSender(queueName);
 
         var body = JsonSerializer.Serialize(message);
 

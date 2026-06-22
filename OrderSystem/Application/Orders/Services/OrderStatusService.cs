@@ -55,7 +55,7 @@ public class OrderStatusService : IOrderStatusService
 
         if (order is null)
         {
-            throw new NotFoundException("Order not found.");
+            throw new Exception("Order not found.");
         }
 
         var previousStatus = order.Status;

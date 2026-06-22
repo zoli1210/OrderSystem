@@ -20,6 +20,7 @@ public static class HealthCheckResponse
                 description = entry.Value.Description,
                 duration = entry.Value.Duration.TotalMilliseconds,
                 error = entry.Value.Exception?.Message,
+                data = entry.Value.Data,
             }),
         };
 

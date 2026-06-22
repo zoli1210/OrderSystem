@@ -67,7 +67,7 @@ public class OrderExplanationService : IOrderExplanationService
                     orderId
                 );
 
-                throw new NotFoundException("Order not found.");
+                throw new Exception("Order not found.");
             }
 
             EnsureUserCanAccessOrder(order);

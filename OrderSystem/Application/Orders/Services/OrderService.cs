@@ -1,4 +1,5 @@
-﻿using OrderSystem.Application.Orders.Contracts.Queries;
+﻿using Microsoft.AspNetCore.Http.HttpResults;
+using OrderSystem.Application.Orders.Contracts.Queries;
 using OrderSystem.Application.Orders.Contracts.Requests;
 using OrderSystem.Application.Orders.Contracts.Responses;
 using OrderSystem.Application.Orders.Mapping;
@@ -79,7 +80,7 @@ public class OrderService : IOrderService
 
         if (order is null)
         {
-            throw new NotFoundException("Order not found");
+            throw new Exception("Order not found");
         }
 
         EnsureUserCanAccessOrder(order);
@@ -130,7 +131,7 @@ public class OrderService : IOrderService
 
         if (order is null)
         {
-            throw new NotFoundException("Order not found");
+            throw new Exception("Order not found");
         }
 
         EnsureUserCanAccessOrder(order);
@@ -172,7 +173,7 @@ public class OrderService : IOrderService
 
         if (order is null)
         {
-            throw new NotFoundException("Order not found");
+            throw new Exception("Order not found");
         }
 
         EnsureUserCanAccessOrder(order);
@@ -188,7 +189,7 @@ public class OrderService : IOrderService
 
         if (order is null)
         {
-            throw new NotFoundException("Order not found");
+            throw new Exception("Order not found");
         }
 
         EnsureUserCanAccessOrder(order);
@@ -307,7 +308,7 @@ public class OrderService : IOrderService
 
         if (order is null)
         {
-            throw new NotFoundException("Order not found");
+            throw new Exception("Order not found");
         }
 
         EnsureUserCanAccessOrder(order);

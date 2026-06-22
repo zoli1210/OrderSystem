@@ -1,4 +1,5 @@
 ﻿using Azure.Messaging.ServiceBus;
+using Azure.Messaging.ServiceBus.Administration;
 using OrderSystem.Infrastructure.Messaging;
 
 namespace OrderSystem.Infrastructure.DependencyInjection;
@@ -22,8 +23,12 @@ public static class MessagingDependencyInjection
             new ServiceBusClientOptions { TransportType = ServiceBusTransportType.AmqpWebSockets }
         ));
 
+        services.AddSingleton(_ => new ServiceBusAdministrationClient(connectionString));
+
         services.AddScoped<IOrderMessageSender, AzureServiceBusOrderMessageSender>();
+
         services.AddScoped<IEmailMessageSender, AzureServiceBusEmailMessageSender>();
+
         services.AddScoped<IDeadLetterService, AzureServiceBusDeadLetterService>();
 
         return services;
