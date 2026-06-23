@@ -1,5 +1,6 @@
 ﻿using System.Text.Json;
 using Azure.Messaging.ServiceBus;
+using Microsoft.Extensions.Configuration;
 using OrderSystem.Infrastructure.Messaging.Messages;
 
 namespace OrderSystem.Infrastructure.Messaging;

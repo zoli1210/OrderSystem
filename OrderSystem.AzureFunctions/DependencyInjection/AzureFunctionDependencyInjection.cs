@@ -18,14 +18,18 @@ public static class AzureFunctionsDependencyInjection
         IConfiguration configuration
     )
     {
-        var sqlConnectionString = configuration["SqlConnectionString"];
+        var sqlConnectionString =
+            configuration.GetConnectionString("SQLConnection")
+            ?? configuration["SqlConnectionString"];
 
         if (string.IsNullOrWhiteSpace(sqlConnectionString))
         {
             throw new InvalidOperationException("SqlConnectionString is missing.");
         }
 
-        var serviceBusConnectionString = configuration["AzureServiceBusConnection"];
+        var serviceBusConnectionString =
+            configuration["AzureServiceBus:ConnectionString"]
+            ?? configuration["AzureServiceBusConnection"];
 
         if (string.IsNullOrWhiteSpace(serviceBusConnectionString))
         {

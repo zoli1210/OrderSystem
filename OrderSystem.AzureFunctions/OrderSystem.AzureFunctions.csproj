@@ -15,15 +15,28 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.ApplicationInsights.WorkerService" Version="2.22.0" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker" Version="2.0.0" />
-    <PackageReference Include="Microsoft.Azure.Functions.Worker.ApplicationInsights" Version="1.2.0" />
-    <PackageReference Include="Microsoft.Azure.Functions.Worker.Sdk" Version="2.0.0" OutputItemType="Analyzer" />
-    <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.ServiceBus" Version="5.22.0" />
+    <PackageReference
+      Include="Microsoft.Azure.Functions.Worker.ApplicationInsights"
+      Version="1.2.0"
+    />
+    <PackageReference
+      Include="Microsoft.Azure.Functions.Worker.Sdk"
+      Version="2.0.0"
+      OutputItemType="Analyzer"
+    />
+    <PackageReference
+      Include="Microsoft.Azure.Functions.Worker.Extensions.ServiceBus"
+      Version="5.22.0"
+    />
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Http" Version="3.2.0" />
-    <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.DurableTask" Version="1.2.2" />
+    <PackageReference
+      Include="Microsoft.Azure.Functions.Worker.Extensions.DurableTask"
+      Version="1.2.2"
+    />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\OrderSystem\OrderSystem.csproj" />
+    <ProjectReference Include="..\OrderSystem.Shared\OrderSystem.Shared.csproj" />
   </ItemGroup>
 
   <ItemGroup>
