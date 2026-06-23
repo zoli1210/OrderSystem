@@ -155,25 +155,35 @@ public class PaymentProcessor : IPaymentProcessor
                 await _orderRepository.SaveChangesAsync(cancellationToken);
             }
         }
-        catch
+        catch (Exception exception)
         {
-            var previousFailedStatus = order.Status;
-
-            order.MarkPaymentAsFailed(SystemUserId);
-
-            await _statusHistoryRepository.AddAsync(
-                new OrderStatusHistory(
-                    order.Id,
-                    previousFailedStatus,
-                    order.Status,
-                    SystemUserId,
-                    "Payment processing failed."
-                ),
-                cancellationToken
+            _logger.LogError(
+                exception,
+                "Payment processing failed. OrderId: {OrderId}, CurrentStatus: {Status}",
+                order.Id,
+                order.Status
             );
 
-            await _orderRepository.UpdateAsync(order, cancellationToken);
-            await _orderRepository.SaveChangesAsync(cancellationToken);
+            if (order.Status == OrderStatus.PaymentProcessing)
+            {
+                var previousFailedStatus = order.Status;
+
+                order.MarkPaymentAsFailed(SystemUserId);
+
+                await _statusHistoryRepository.AddAsync(
+                    new OrderStatusHistory(
+                        order.Id,
+                        previousFailedStatus,
+                        order.Status,
+                        SystemUserId,
+                        "Payment processing failed."
+                    ),
+                    cancellationToken
+                );
+
+                await _orderRepository.UpdateAsync(order, cancellationToken);
+                await _orderRepository.SaveChangesAsync(cancellationToken);
+            }
 
             throw;
         }

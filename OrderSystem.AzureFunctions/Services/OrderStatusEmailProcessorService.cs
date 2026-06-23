@@ -12,6 +12,7 @@ public class OrderStatusEmailProcessorService : IOrderStatusEmailProcessor
             OrderStatus.Preparing => new OrderStatusEmailProcessor
             {
                 Subject = "Your order is being prepared",
+                EmailType = "Preparing",
                 Body = $"""
                     Hi,
 
@@ -26,6 +27,7 @@ public class OrderStatusEmailProcessorService : IOrderStatusEmailProcessor
             OrderStatus.ReadyForShipment => new OrderStatusEmailProcessor
             {
                 Subject = "Your order is ready for shipment",
+                EmailType = "ReadyForShipment",
                 Body = $"""
                     Hi,
 
@@ -40,6 +42,7 @@ public class OrderStatusEmailProcessorService : IOrderStatusEmailProcessor
             OrderStatus.Shipped => new OrderStatusEmailProcessor
             {
                 Subject = "Your order has been shipped",
+                EmailType = "Shipped",
                 Body = $"""
                     Hi,
 
@@ -55,6 +58,7 @@ public class OrderStatusEmailProcessorService : IOrderStatusEmailProcessor
             OrderStatus.Delivered => new OrderStatusEmailProcessor
             {
                 Subject = "Your order has been delivered",
+                EmailType = "Delivered",
                 Body = $"""
                     Hi,
 
