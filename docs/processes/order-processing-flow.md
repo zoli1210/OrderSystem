@@ -1,431 +1,551 @@
-# Order Processing Flow
+# Local Development and Configuration
 
-This document describes the complete order processing flow, including order lifecycle, payment processing, fulfillment workflow, email notifications, and dead-letter handling.
+This document describes how to run OrderSystem locally and which configuration values are required.
 
-## Order Statuses
+## Required Projects
 
-The system uses the following order statuses:
+Both runtime projects must run during local testing:
+
+```text
+OrderSystem
+OrderSystem.AzureFunctions
+```
+
+`OrderSystem.Shared` is not started directly.
+
+Visual Studio multiple startup projects should be:
+
+```text
+OrderSystem                -> Start
+OrderSystem.AzureFunctions -> Start
+OrderSystem.Shared         -> None
+```
+
+The API project handles HTTP requests.
+
+The Azure Functions project handles asynchronous background processing.
+
+The shared project contains code used by both runtime projects.
+
+## Required Infrastructure
+
+The project requires:
+
+- SQL Server or Azure SQL Database
+- Azure Service Bus
+- Azure Storage for Durable Functions
+- Azure Communication Services
+- OpenAI
+- Supabase with pgvector
+- Application Insights configuration if telemetry is enabled
+
+## Required Service Bus Queues
+
+Create these queues:
+
+```text
+order-created
+order-status-changed
+email-notification
+```
+
+## API Configuration Files
+
+The API project uses:
+
+```text
+appsettings.json
+appsettings.Development.json
+environment variables
+```
+
+`appsettings.json` should contain safe structure/defaults.
+
+`appsettings.Development.json` can contain local secret values, but it must not be committed.
+
+## Azure Functions Configuration Files
+
+The Azure Functions project uses:
+
+```text
+local.settings.json
+environment variables
+Azure Function App configuration
+```
+
+`local.settings.json` can contain local secret values, but it must not be committed.
+
+## Database Configuration
+
+The API and Azure Functions must point to the same database.
+
+For local-only development this can be LocalDB or SQL Server.
+
+For Azure integration testing this should be Azure SQL Database.
+
+API configuration:
+
+```text
+ConnectionStrings:SQLConnection
+```
+
+Azure Functions configuration:
+
+```text
+SqlConnectionString
+ConnectionStrings:SQLConnection
+```
+
+Both values should point to the same database.
+
+Example Azure SQL connection string shape:
+
+```text
+Server=tcp:<server-name>.database.windows.net,1433;Initial Catalog=OrderSystemDb;User ID=<user>;Password=<password>;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;
+```
+
+When testing Azure SQL from a local machine, the current outbound IP address must be allowed on the Azure SQL logical server firewall.
+
+If the local network uses VPN/proxy routing, the outbound IP can change. In that case, update the Azure SQL firewall rule or allow the required IP range for development testing.
+
+## JWT Configuration
+
+Required JWT values:
+
+```text
+Jwt:Issuer
+Jwt:Audience
+Jwt:Key
+```
+
+`Jwt:Key` is sensitive and must not be committed.
+
+## Admin User Seed Configuration
+
+Required admin seed values:
+
+```text
+AdminUser:Email
+AdminUser:Password
+```
+
+The admin password is sensitive and must not be committed.
+
+## Azure Service Bus Configuration
+
+The API and Azure Functions both use Azure Service Bus.
+
+API configuration:
+
+```text
+AzureServiceBus:ConnectionString
+AzureServiceBus:OrderCreatedQueueName
+AzureServiceBus:OrderStatusChangedQueueName
+AzureServiceBus:EmailNotificationQueueName
+```
+
+Azure Functions configuration:
+
+```text
+AzureServiceBusConnection
+AzureServiceBus:ConnectionString
+AzureServiceBus:OrderCreatedQueueName
+AzureServiceBus:OrderStatusChangedQueueName
+AzureServiceBus:EmailNotificationQueueName
+```
+
+`AzureServiceBusConnection` is required by the Service Bus trigger attributes.
+
+`AzureServiceBus:ConnectionString` is required by shared sender services.
+
+Required queue names:
+
+```text
+order-created
+order-status-changed
+email-notification
+```
+
+## Azure Functions Local Configuration Example
+
+`OrderSystem.AzureFunctions/local.settings.json` should contain local values similar to:
+
+```json
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "<storage-connection-string>",
+    "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
+
+    "SqlConnectionString": "<sql-connection-string>",
+    "ConnectionStrings:SQLConnection": "<sql-connection-string>",
+
+    "AzureServiceBusConnection": "<service-bus-connection-string>",
+    "AzureServiceBus:ConnectionString": "<service-bus-connection-string>",
+
+    "AzureServiceBus:OrderCreatedQueueName": "order-created",
+    "AzureServiceBus:OrderStatusChangedQueueName": "order-status-changed",
+    "AzureServiceBus:EmailNotificationQueueName": "email-notification",
+
+    "CommunicationServices:ConnectionString": "<communication-services-connection-string>",
+    "CommunicationServices:SenderAddress": "<sender-email-address>",
+
+    "FulfillmentAlertEmail": "<admin-alert-email>"
+  }
+}
+```
+
+## Durable Functions Storage
+
+Durable Functions require Azure Storage.
+
+Required value:
+
+```text
+AzureWebJobsStorage
+```
+
+This is used for orchestration state management.
+
+For local development, this can point to:
+
+- a real Azure Storage account
+- a local Azure Storage emulator
+
+## Fulfillment Alert Configuration
+
+Fulfillment timeout alert emails use:
+
+```text
+FulfillmentAlertEmail
+```
+
+This email address receives admin alerts when fulfillment status changes are delayed.
+
+## Azure Communication Services Configuration
+
+Email sending uses Azure Communication Services.
+
+Required values:
+
+```text
+CommunicationServices:ConnectionString
+CommunicationServices:SenderAddress
+```
+
+The connection string is sensitive and must not be committed.
+
+## Application Insights Configuration
+
+Application Insights is used for telemetry.
+
+Possible values:
+
+```text
+ApplicationInsights:ConnectionString
+APPLICATIONINSIGHTS_CONNECTION_STRING
+```
+
+The exact key depends on project/runtime configuration.
+
+## OpenAI Configuration
+
+Required values:
+
+```text
+OpenAI:ApiKey
+OpenAI:EmbeddingModel
+OpenAI:ChatModel
+OpenAI:DefaultMatchCount
+```
+
+`OpenAI:ApiKey` is sensitive and must not be committed.
+
+## Supabase Configuration
+
+Required values:
+
+```text
+Supabase:Url
+Supabase:SecretKey
+```
+
+`Supabase:SecretKey` is backend-only and must not be exposed to client applications.
+
+## Local Run Order
+
+Recommended local run order:
+
+```text
+1. Start SQL Server or confirm Azure SQL Database access.
+2. Confirm Azure Service Bus queues exist.
+3. Confirm Azure Storage is available for Durable Functions.
+4. Start OrderSystem API.
+5. Start OrderSystem.AzureFunctions.
+6. Test GET /health.
+7. Create or log in with a user.
+8. Create an order.
+9. Watch the queue/function processing.
+10. Verify order data and email history in SQL.
+```
+
+## Expected Full Happy Path Test
+
+```text
+1. Register or log in.
+2. Create an order through POST /orders.
+3. Confirm the order is saved with Pending status.
+4. Confirm OrderCreatedMessage is published.
+5. Let PaymentProcessorFunction process the message.
+6. Confirm the order moves to PaymentProcessing.
+7. Confirm the order moves to Paid.
+8. Confirm OrderStatusChangedMessage is published.
+9. Confirm fulfillment workflow starts.
+10. Update order status through PATCH /orders/{orderId}/status.
+11. Move order through Preparing, ReadyForShipment, Shipped, Delivered.
+12. Confirm email messages are processed.
+13. Confirm status history and email history endpoints return data.
+14. Confirm the records are visible in the configured SQL database.
+```
+
+## Expected Payment Failure Test
 
 ```text
 Pending
-PaymentProcessing
-Paid
-Preparing
-ReadyForShipment
-Shipped
-Delivered
-Failed
-Cancelled
-Returned
-```
-
-## Status Meaning
-
-### Pending
-
-The order has been created and saved, but payment has not completed yet.
-
-This is the initial status of a new order.
-
-### PaymentProcessing
-
-The payment processor has started processing the order.
-
-### Paid
-
-Payment completed successfully.
-
-This status starts the fulfillment workflow.
-
-### Preparing
-
-The paid order is being prepared.
-
-### ReadyForShipment
-
-The order is prepared and ready to be shipped.
-
-### Shipped
-
-The order has been shipped.
-
-A tracking number is required for this status.
-
-### Delivered
-
-The order has been delivered to the customer.
-
-### Failed
-
-Payment processing failed.
-
-The order can be retried from this status.
-
-### Cancelled
-
-The order has been cancelled.
-
-A cancellation reason is required.
-
-### Returned
-
-The delivered order has been returned.
-
-## Valid Status Transitions
-
-```text
-Pending
-  → PaymentProcessing
-  → Cancelled
-
-PaymentProcessing
-  → Paid
-  → Failed
-
-Failed
-  → Pending
-  → Cancelled
-
-Paid
-  → Preparing
-  → Cancelled
-
-Preparing
-  → ReadyForShipment
-  → Cancelled
-
-ReadyForShipment
-  → Shipped
-  → Cancelled
-
-Shipped
-  → Delivered
-
-Delivered
-  → Returned
-
-Cancelled
-  → no further transition
-
-Returned
-  → no further transition
-```
-
-## Happy Path
-
-```text
-Pending
   ↓
-PaymentProcessing
-  ↓
-Paid
-  ↓
-Preparing
-  ↓
-ReadyForShipment
-  ↓
-Shipped
-  ↓
-Delivered
-```
-
-## Payment Processing
-
-Payment processing is asynchronous.
-
-The API does not process the payment directly during the HTTP request.
-
-Instead:
-
-```text
-POST /orders
-  ↓
-Order is saved with Pending status
-  ↓
-OrderCreatedMessage is published to order-created queue
-  ↓
-PaymentProcessorFunction receives the message
-  ↓
-PaymentProcessor loads the order from SQL Server
-  ↓
-Order status changes to PaymentProcessing
-  ↓
-PaymentService processes the payment
-  ↓
-Order status changes to Paid or Failed
-```
-
-## Payment Message
-
-The payment message contains the minimum data needed to start payment processing.
-
-Typical message data:
-
-```text
-OrderId
-TotalAmount
-CustomerEmail
-```
-
-The processor still loads the actual order from SQL Server.
-
-The queue message is not treated as the full source of truth.
-
-## Payment Success
-
-If payment succeeds:
-
-```text
-PaymentProcessing
-  ↓
-Paid
-```
-
-Then the system:
-
-- saves order status history
-- publishes an order status changed message
-- publishes a payment confirmation email message
-- starts fulfillment workflow through the status changed flow
-
-## Payment Failure
-
-If payment fails:
-
-```text
 PaymentProcessing
   ↓
 Failed
 ```
 
-The order can be retried through:
+Then retry:
 
 ```text
 POST /orders/{id}/retry-payment
 ```
 
-Retrying payment moves the order back to `Pending` and publishes a new payment message.
-
-## Payment Idempotency
-
-Payment processing should only continue if the order is currently in `Pending`.
+Expected retry flow:
 
 ```text
-if order.Status != Pending
-  → skip processing
+Failed
+  ↓
+Pending
+  ↓
+PaymentProcessing
+  ↓
+Paid or Failed
 ```
 
-This protects the system from duplicate queue messages and repeated retries.
+## Health Check
 
-## Fulfillment Workflow
-
-Fulfillment starts after successful payment.
+The API exposes:
 
 ```text
-Paid
-  ↓
-Preparing
-  ↓
-ReadyForShipment
-  ↓
-Shipped
-  ↓
-Delivered
+GET /health
 ```
 
-The fulfillment process is coordinated by Durable Functions.
+Use this endpoint to verify important runtime dependencies.
 
-## Durable Workflow Start
+The health check validates the currently configured SQL database and Service Bus access.
+
+If the API connection string points to LocalDB, the health check validates LocalDB.
+
+If the API connection string points to Azure SQL Database, the health check validates Azure SQL Database.
+
+## Common Local Problems
+
+### API can connect to Azure SQL but Functions cannot find the order
+
+This usually means the API and Functions are using different SQL connection strings.
+
+Check:
 
 ```text
-Order reaches Paid
-  ↓
-OrderStatusChangedMessage is published
-  ↓
-OrderStatusChangedFunction receives the message
-  ↓
-OrderFulfillmentOrchestrator starts
+ConnectionStrings:SQLConnection
+SqlConnectionString
+ConnectionStrings:SQLConnection in local.settings.json
 ```
 
-The workflow uses a deterministic instance id based on the order id.
+Both runtime projects must point to the same database.
 
-This prevents accidentally starting multiple fulfillment workflows for the same order.
+### Azure SQL firewall blocks local execution
 
-## Durable External Events
-
-The workflow waits for these fulfillment status events:
+Error shape:
 
 ```text
-Preparing
-ReadyForShipment
-Shipped
-Delivered
+Client with IP address '<ip>' is not allowed to access the server.
 ```
 
-Manual status changes are made through the API.
-
-After the API saves the new status, it publishes an order status changed message.
-
-The function receives the message and raises the matching Durable external event.
-
-## Fulfillment Timeout Rules
-
-The workflow monitors whether fulfillment steps happen in time.
+Fix:
 
 ```text
-Paid → Preparing: 48 hours
-Preparing → ReadyForShipment: 24 hours
-ReadyForShipment → Shipped: 24 hours
-Shipped → Delivered: 5 days
+Azure Portal
+-> SQL servers
+-> <server>
+-> Networking
+-> Firewall rules
+-> Add current client IP address
+-> Save
 ```
 
-If the expected status does not arrive in time, the workflow sends an admin alert email.
+If the IP changes often, the machine is probably behind VPN/proxy routing.
 
-The alert does not automatically cancel or fail the order.
+### Azure Functions does not process messages
 
-It only notifies that manual action may be needed.
-
-## Email Notifications
-
-Emails are sent asynchronously through the `email-notification` queue.
+Check:
 
 ```text
-Business event happens
-  ↓
-EmailNotificationMessage is published
-  ↓
-EmailNotificationFunction receives the message
-  ↓
-EmailProcessor loads the related order
-  ↓
-Email is sent through Azure Communication Services
-  ↓
-Email notification history is saved
+AzureServiceBusConnection
+queue names
+queue existence
+Function App startup logs
+message dead-letter count
 ```
 
-## Email Types
+### Function receives Service Bus message but fails sending another message
 
-Current email use cases include:
+Check that Functions configuration contains:
+
+```text
+AzureServiceBus:ConnectionString
+AzureServiceBus:OrderCreatedQueueName
+AzureServiceBus:OrderStatusChangedQueueName
+AzureServiceBus:EmailNotificationQueueName
+```
+
+The trigger connection and sender connection are separate config needs.
+
+### Durable workflow does not start
+
+Check:
+
+```text
+AzureWebJobsStorage
+order-status-changed queue
+OrderStatusChangedFunction logs
+whether the order actually reached Paid
+whether a workflow instance already exists
+```
+
+### Emails are not sent
+
+Check:
+
+```text
+email-notification queue
+CommunicationServices:ConnectionString
+CommunicationServices:SenderAddress
+EmailNotificationFunction logs
+email notification history
+```
+
+### Status emails are skipped
+
+Check the email history table.
+
+Status email messages must set their own `EmailType`.
+
+Expected email types:
 
 ```text
 PaymentConfirmation
-Fulfillment status notifications
-Fulfillment timeout alerts
+Preparing
+ReadyForShipment
+Shipped
+Delivered
 ```
 
-## Email Idempotency
+If `EmailType` is missing, the email processor treats the message as `PaymentConfirmation`.
 
-The email processor checks whether the same email type was already sent for the same order.
+### AI assistant does not return useful answers
+
+Check:
 
 ```text
-OrderId + EmailType
-  → send only once
+OpenAI configuration
+Supabase configuration
+knowledge_sources table
+knowledge_documents table
+background ingestion logs
+pgvector migration
 ```
 
-This protects the system from duplicate Service Bus messages and retry scenarios.
+## Secret Handling Rules
 
-## Email History
-
-Email notification history stores:
-
-- order id
-- recipient
-- subject
-- body
-- email type
-- status
-- created timestamp
-- sent timestamp
-- failed timestamp
-- error message
-
-Supported email history statuses:
+Do not commit real values for:
 
 ```text
-Pending
-Sent
-Failed
+SQLConnection
+SqlConnectionString
+ConnectionStrings:SQLConnection
+Jwt:Key
+AdminUser:Password
+AzureServiceBus:ConnectionString
+AzureServiceBusConnection
+AzureWebJobsStorage
+CommunicationServices:ConnectionString
+ApplicationInsights:ConnectionString
+APPLICATIONINSIGHTS_CONNECTION_STRING
+OpenAI:ApiKey
+Supabase:SecretKey
 ```
 
-## Dead-letter Handling
+## Files That Should Not Be Shared Publicly
 
-Azure Service Bus can move messages to dead-letter queues when they cannot be processed successfully.
-
-The system exposes admin-only endpoints for inspecting and retrying dead-letter messages.
-
-Supported dead-letter areas:
+Do not include these files or folders in public uploads:
 
 ```text
-orders
-emails
+.git
+.vs
+bin
+obj
+*.user
+local.settings.json
+appsettings.Development.json
+serviceDependencies.local.json.user
 ```
 
-These map to:
+## Recommended Local Secret Strategy
+
+Use this structure:
 
 ```text
-order-created
-email-notification
+appsettings.json
+  -> safe defaults and non-secret configuration shape
+
+appsettings.Development.json
+  -> local API secrets, ignored by git
+
+local.settings.json
+  -> local Azure Functions secrets, ignored by git
+
+environment variables
+  -> preferred for deployed environments
 ```
 
-## Dead-letter Endpoints
+## Before Sharing the Project
+
+Before sending the project ZIP to anyone, remove:
 
 ```text
-GET  /dead-letters/orders
-GET  /dead-letters/emails
-
-POST /dead-letters/orders/{sequenceNumber}/retry
-POST /dead-letters/emails/{sequenceNumber}/retry
+.git
+.vs
+bin
+obj
+*.user
+local.settings.json
+appsettings.Development.json
+serviceDependencies.local.json.user
 ```
 
-## Dead-letter Retry Flow
+Also check that no secret values are accidentally present in:
 
 ```text
-Read dead-letter message by sequence number
-  ↓
-Republish the message body to the original queue
-  ↓
-Complete/remove the dead-letter message
-  ↓
-Message is processed again
-```
-
-## Retry Safety
-
-Before retrying a dead-letter message, check:
-
-- whether the original bug has been fixed
-- whether the related order still exists
-- whether the message body is valid
-- whether retrying can create duplicate side effects
-- whether the processor has idempotency protection
-
-## Related Components
-
-```text
-OrdersController
-OrderService
-Order
-OrderStatus
-OrderStatusHistory
-AzureServiceBusOrderMessageSender
-AzureServiceBusOrderStatusMessageSender
-AzureServiceBusEmailMessageSender
-
-PaymentProcessorFunction
-PaymentProcessor
-PaymentService
-
-OrderStatusChangedFunction
-OrderFulfillmentOrchestrator
-OrderFulfillmentAlertActivity
-
-EmailNotificationFunction
-EmailProcessor
-AzureCommunicationEmailService
-EmailNotificationHistory
-
-DeadLetterController
-AzureServiceBusDeadLetterService
+README.md
+docs
+launchSettings.json
+service dependency files
+deployment files
 ```
 
 ## Related Endpoints
@@ -446,3 +566,106 @@ GET    /dead-letters/emails
 POST   /dead-letters/orders/{sequenceNumber}/retry
 POST   /dead-letters/emails/{sequenceNumber}/retry
 ```
+
+## Azure Integration Notes
+
+The API and Azure Functions must use the same SQL database.
+
+If the API writes orders into Azure SQL but the Functions project still points to LocalDB or another database, payment processing will fail with an `Order not found` error.
+
+Expected configuration:
+
+```text
+API:
+ConnectionStrings:SQLConnection
+
+Azure Functions:
+SqlConnectionString
+ConnectionStrings:SQLConnection
+```
+
+Both values must point to the same database.
+
+## Service Bus Configuration Notes
+
+The Functions project needs both trigger configuration and sender configuration.
+
+Trigger configuration:
+
+```text
+AzureServiceBusConnection
+```
+
+Shared sender configuration:
+
+```text
+AzureServiceBus:ConnectionString
+AzureServiceBus:OrderCreatedQueueName
+AzureServiceBus:OrderStatusChangedQueueName
+AzureServiceBus:EmailNotificationQueueName
+```
+
+If `AzureServiceBus:OrderStatusChangedQueueName` is missing, payment can succeed and the order can become `Paid`, but publishing the next status changed message will fail.
+
+## Status Email Configuration Notes
+
+Status email messages must include their own `EmailType`.
+
+Expected status email types:
+
+```text
+Preparing
+ReadyForShipment
+Shipped
+Delivered
+```
+
+If these are missing, the email processor falls back to:
+
+```text
+PaymentConfirmation
+```
+
+That causes status emails to be skipped when the payment confirmation email has already been sent.
+
+Expected email history for a completed happy path:
+
+```text
+PaymentConfirmation
+Preparing
+ReadyForShipment
+Shipped
+Delivered
+```
+
+## Expected Queue State After Successful Processing
+
+After a successful end-to-end flow, Service Bus queues should not keep active messages.
+
+Expected state:
+
+```text
+order-created          -> Active messages: 0
+order-status-changed   -> Active messages: 0
+email-notification     -> Active messages: 0
+```
+
+Dead-letter count should not increase during a clean test run.
+
+Old dead-letter messages may remain visible in Azure Portal. They do not run again automatically unless explicitly resent or retried.
+
+## Summary
+
+The order process is event-driven.
+
+The API owns synchronous user/admin actions.
+
+Azure Functions own asynchronous processing.
+
+SQL is the source of truth.
+
+Service Bus messages are transport messages and must be processed defensively.
+
+Email sending is asynchronous and idempotent by `OrderId + EmailType`.
+
+Durable Functions coordinate long-running fulfillment workflow steps.

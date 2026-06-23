@@ -9,6 +9,23 @@ OrderSystem
 OrderSystem.AzureFunctions
 ```
 
+The solution also contains a shared class library:
+
+```text
+OrderSystem.Shared
+```
+
+`OrderSystem.Shared` is not a runtime project. It contains code used by both the API and Azure Functions.
+
+Current project dependency direction:
+
+```text
+OrderSystem                -> OrderSystem.Shared
+OrderSystem.AzureFunctions -> OrderSystem.Shared
+```
+
+Azure Functions must not reference the API project directly.
+
 ## Project Responsibilities
 
 ### OrderSystem
@@ -28,7 +45,6 @@ It handles:
 - manual order status updates
 - order status history
 - email notification history
-- SQL persistence
 - Azure Service Bus message publishing
 - dead-letter inspection and retry endpoints
 - health checks
@@ -50,29 +66,63 @@ It handles:
 - raising Durable external events
 - sending fulfillment timeout alerts
 
+### OrderSystem.Shared
+
+The shared project contains code used by both runtime projects.
+
+It contains:
+
+- domain entities
+- domain enums
+- EF Core `AppDbContext`
+- EF Core entity configurations
+- repository interfaces and implementations
+- Azure Service Bus message contracts
+- Azure Service Bus message senders
+- dead-letter service
+- payment abstractions and payment service
+- email service abstractions
+- Azure Communication Services email implementation
+- shared authentication persistence model required by `AppDbContext`
+
+`OrderSystem.Shared` is built and deployed together with the API and the Functions app. It is not deployed as an independent service.
+
 ## High-level Architecture
 
 ```text
 Client
   ↓
-ASP.NET Core Web API
+OrderSystem API
   ↓
-SQL Server
+OrderSystem.Shared
+  ↓
+Azure SQL Database
   ↓
 Azure Service Bus
   ↓
-Azure Functions
+OrderSystem.AzureFunctions
   ↓
-Durable Functions
-  ↓
-Azure Communication Services
+Durable Functions / Azure Communication Services
+```
+
+Runtime deployment:
+
+```text
+OrderSystem API            -> Azure App Service
+OrderSystem.AzureFunctions -> Azure Function App
+OrderSystem.Shared         -> shared library, deployed with both runtimes
+Database                   -> Azure SQL Database
+Messaging                  -> Azure Service Bus
+Durable state              -> Azure Storage Account
+Monitoring                 -> Application Insights
+Email                      -> Azure Communication Services
 ```
 
 ## Runtime Communication
 
 The API does not directly execute every long-running process.
 
-Instead, it saves the business state to SQL Server and publishes messages to Azure Service Bus.
+Instead, it saves the business state to SQL Server or Azure SQL Database and publishes messages to Azure Service Bus.
 
 Azure Functions consume these messages and perform background work.
 
@@ -108,7 +158,13 @@ The payment processor listens to this queue.
 
 Used when an order reaches a status that should trigger follow-up workflow behavior.
 
-The fulfillment workflow listens to this queue.
+The order status changed function listens to this queue.
+
+It can:
+
+- start the fulfillment workflow when the order reaches `Paid`
+- raise Durable external events for fulfillment statuses
+- publish status email notification messages
 
 ### email-notification
 
@@ -118,7 +174,7 @@ The email processor listens to this queue.
 
 ## Source of Truth
 
-SQL Server is the source of truth for order data.
+SQL Server or Azure SQL Database is the source of truth for order data.
 
 The database stores:
 
@@ -133,18 +189,21 @@ Azure Service Bus messages are not the source of truth.
 
 They are transport messages used to trigger background processing.
 
+Because Service Bus messages can be duplicated, retried, or dead-lettered, processors must always reload the latest business state from SQL before making decisions.
+
 Supabase/vector data is not the source of truth either.
 
 It is used only as supporting documentation context for AI features.
 
 ## Architectural Style
 
-The project is designed as a modular monolith.
+The project is designed as a modular monolith with a separate background-processing runtime.
 
 That means:
 
 - the system is not split into multiple microservices
-- the codebase stays understandable
+- the API and Functions are deployed separately
+- shared business and infrastructure code is placed in `OrderSystem.Shared`
 - feature boundaries are still respected
 - infrastructure concerns are separated from business rules
 - async processing is used where it gives real value
@@ -153,14 +212,15 @@ This is a practical architecture for a portfolio backend because it demonstrates
 
 ## Recommended Internal Layering
 
-The API project should be structured around these logical areas:
+The solution is structured around these logical areas:
 
 ```text
 Api
 Application
 Domain
 Infrastructure
-SharedKernel
+Common
+OrderSystem.Shared
 ```
 
 ### Api
@@ -171,6 +231,8 @@ Contains HTTP-specific code:
 - middleware
 - request/response handling
 - API-level configuration
+- Swagger configuration
+- health check endpoint mapping
 
 ### Application
 
@@ -193,6 +255,8 @@ Contains business models and business rules:
 - valid status transitions
 - domain-level validation
 
+Domain code that is needed by both the API and Functions lives in `OrderSystem.Shared`.
+
 ### Infrastructure
 
 Contains external technical implementations:
@@ -203,16 +267,48 @@ Contains external technical implementations:
 - Azure Communication Services
 - OpenAI
 - Supabase
-- health checks
 - configuration options
 
-### SharedKernel
+Infrastructure code that is needed by both the API and Functions lives in `OrderSystem.Shared`.
 
-Contains small shared building blocks that are not owned by a specific feature:
+API-only infrastructure registration remains in the API project.
 
-- common exceptions
+Function-specific dependency registration remains in the Azure Functions project.
+
+### Common
+
+Contains small shared building blocks used by the API layer, such as:
+
 - pagination models
-- shared result structures
+- shared response structures
+- common API helpers
+
+### OrderSystem.Shared
+
+Contains code shared by both runtime projects:
+
+```text
+Domain
+Infrastructure/Persistence
+Infrastructure/Messaging
+Application/Payments
+Application/EmailNotifications
+Application/Auth/Domain
+```
+
+The namespace names do not need to include `Shared`.
+
+For example, code inside `OrderSystem.Shared` can still use namespaces such as:
+
+```text
+OrderSystem.Domain.Entities
+OrderSystem.Infrastructure.Persistence
+OrderSystem.Infrastructure.Messaging
+OrderSystem.Modules.Email.Services
+OrderSystem.Modules.Payments.Services
+```
+
+The physical project is shared, but the logical namespace can remain aligned with the existing architecture.
 
 ## Main System Flow
 
@@ -220,19 +316,177 @@ Contains small shared building blocks that are not owned by a specific feature:
 1. User creates an order through the API.
 2. API validates the request.
 3. API saves the order with Pending status.
-4. API publishes OrderCreatedMessage.
+4. API publishes OrderCreatedMessage to order-created queue.
 5. PaymentProcessorFunction receives the message.
-6. PaymentProcessor moves the order to PaymentProcessing.
-7. PaymentService processes the payment.
-8. Order moves to Paid or Failed.
-9. If payment succeeds, OrderStatusChangedMessage is published.
-10. Fulfillment workflow starts when the order reaches Paid.
-11. Admin updates fulfillment statuses through the API.
-12. Status changes are sent as Service Bus messages.
-13. Durable workflow receives external events.
-14. Email messages are published when customer/admin communication is needed.
-15. EmailNotificationFunction sends the emails.
+6. PaymentProcessor loads the order from SQL.
+7. PaymentProcessor moves the order to PaymentProcessing.
+8. PaymentService processes the payment.
+9. Order moves to Paid or Failed.
+10. If payment succeeds, OrderStatusChangedMessage is published.
+11. Payment confirmation email message is published.
+12. Fulfillment workflow starts when the order reaches Paid.
+13. Admin updates fulfillment statuses through the API.
+14. Status changes are saved to SQL.
+15. Status changes are sent as Service Bus messages.
+16. Durable workflow receives external events.
+17. Status email messages are published when configured.
+18. EmailNotificationFunction sends the emails.
+19. EmailNotificationHistory stores the result.
 ```
+
+## Payment Processing
+
+Payment processing is asynchronous.
+
+```text
+POST /orders
+  ↓
+Order is saved with Pending status
+  ↓
+OrderCreatedMessage is published
+  ↓
+PaymentProcessorFunction receives the message
+  ↓
+Order is loaded from SQL
+  ↓
+Pending -> PaymentProcessing
+  ↓
+PaymentService processes payment
+  ↓
+PaymentProcessing -> Paid or Failed
+```
+
+Payment processing should continue only if the order is currently in `Pending`.
+
+```text
+if order.Status != Pending
+  -> skip processing
+```
+
+This protects the system from duplicate Service Bus messages and retry scenarios.
+
+If payment succeeds but a later side effect fails, such as sending a status changed message, the processor must not move the order from `Paid` to `Failed`.
+
+Payment failure should only be applied while the order is still in `PaymentProcessing`.
+
+## Fulfillment Workflow
+
+Fulfillment starts after successful payment.
+
+```text
+Paid
+  ↓
+Preparing
+  ↓
+ReadyForShipment
+  ↓
+Shipped
+  ↓
+Delivered
+```
+
+The fulfillment process is coordinated by Durable Functions.
+
+The workflow uses a deterministic instance id based on the order id.
+
+This prevents accidentally starting multiple fulfillment workflows for the same order.
+
+## Durable External Events
+
+Manual status changes are made through the API.
+
+After the API saves the new status, it publishes an order status changed message.
+
+The function receives the message and raises the matching Durable external event.
+
+The workflow waits for these fulfillment status events:
+
+```text
+Preparing
+ReadyForShipment
+Shipped
+Delivered
+```
+
+## Email Notifications
+
+Emails are sent asynchronously through the `email-notification` queue.
+
+```text
+Business event happens
+  ↓
+EmailNotificationMessage is published
+  ↓
+EmailNotificationFunction receives the message
+  ↓
+EmailProcessor loads the related order
+  ↓
+Email is sent through Azure Communication Services
+  ↓
+Email notification history is saved
+```
+
+Current email types:
+
+```text
+PaymentConfirmation
+Preparing
+ReadyForShipment
+Shipped
+Delivered
+```
+
+`PaymentConfirmation` is sent after successful payment.
+
+The fulfillment status email types are sent after manual/admin status changes.
+
+## Email Idempotency
+
+The email processor checks whether the same email type was already sent for the same order.
+
+```text
+OrderId + EmailType + Sent
+  -> send only once
+```
+
+This means one order can receive multiple different emails:
+
+```text
+PaymentConfirmation
+Preparing
+ReadyForShipment
+Shipped
+Delivered
+```
+
+But the same email type should not be sent twice for the same order.
+
+If `EmailType` is missing, the email processor treats the message as `PaymentConfirmation`.
+
+Therefore status email messages must always set their own `EmailType`.
+
+## Health Check
+
+The API exposes:
+
+```text
+GET /health
+```
+
+The health check validates the currently configured infrastructure.
+
+It checks:
+
+- SQL database connectivity
+- Azure Service Bus queue availability
+
+The health check uses the active runtime configuration.
+
+If the API connection string points to LocalDB, it checks LocalDB.
+
+If the API connection string points to Azure SQL Database, it checks Azure SQL Database.
+
+The periodic health check runs after startup and then on the configured interval.
 
 ## Important Design Decisions
 
@@ -242,11 +496,19 @@ Manual operations such as cancellation, payment retry, and status updates are pe
 
 Functions react to events but should not become the main public command surface.
 
+### Functions do not reference the API project
+
+Azure Functions use `OrderSystem.Shared` for shared domain, persistence, messaging, payment, and email logic.
+
+They must not reference the API project directly.
+
+This keeps the background worker independent from HTTP controllers, Swagger setup, middleware, and API-only configuration.
+
 ### SQL state is always more important than queue state
 
 A message can be duplicated, retried, or dead-lettered.
 
-Because of this, processors must load the latest order state from SQL Server before making decisions.
+Because of this, processors must load the latest order state from SQL before making decisions.
 
 ### Long-running workflow uses Durable Functions
 
@@ -258,12 +520,12 @@ Durable Functions are used to wait for status changes and trigger timeout alerts
 
 Emails are not sent inside the HTTP request flow.
 
-This keeps API requests fast and avoids coupling user actions directly to email provider availability.
+The API or Functions publish an email notification message, and the email processor sends the email in the background.
 
-### AI is supporting functionality
+### Shared project is a deployment dependency, not a service
 
-AI features explain the system and orders, but they do not control business state.
+`OrderSystem.Shared` is a class library.
 
-The AI assistant must not invent order state.
+It has no runtime host, no endpoint, and no independent Azure resource.
 
-Actual order state always comes from SQL Server.
+It is included when building and publishing the API and Functions.

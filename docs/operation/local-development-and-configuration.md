@@ -4,22 +4,34 @@ This document describes how to run OrderSystem locally and which configuration v
 
 ## Required Projects
 
-Both projects must run during local testing:
+Both runtime projects must run during local testing:
 
 ```text
 OrderSystem
 OrderSystem.AzureFunctions
 ```
 
+`OrderSystem.Shared` is not started directly.
+
+Visual Studio multiple startup projects should be:
+
+```text
+OrderSystem                -> Start
+OrderSystem.AzureFunctions -> Start
+OrderSystem.Shared         -> None
+```
+
 The API project handles HTTP requests.
 
 The Azure Functions project handles asynchronous background processing.
+
+The shared project contains code used by both runtime projects.
 
 ## Required Infrastructure
 
 The project requires:
 
-- SQL Server
+- SQL Server or Azure SQL Database
 - Azure Service Bus
 - Azure Storage for Durable Functions
 - Azure Communication Services
@@ -65,16 +77,36 @@ Azure Function App configuration
 
 ## Database Configuration
 
-The API and Azure Functions project must point to the same SQL database.
+The API and Azure Functions must point to the same database.
 
-Common database configuration keys:
+For local-only development this can be LocalDB or SQL Server.
+
+For Azure integration testing this should be Azure SQL Database.
+
+API configuration:
 
 ```text
-SQLConnection
-SqlConnectionString
+ConnectionStrings:SQLConnection
 ```
 
-Depending on the project, the setting name may differ.
+Azure Functions configuration:
+
+```text
+SqlConnectionString
+ConnectionStrings:SQLConnection
+```
+
+Both values should point to the same database.
+
+Example Azure SQL connection string shape:
+
+```text
+Server=tcp:<server-name>.database.windows.net,1433;Initial Catalog=OrderSystemDb;User ID=<user>;Password=<password>;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;
+```
+
+When testing Azure SQL from a local machine, the current outbound IP address must be allowed on the Azure SQL logical server firewall.
+
+If the local network uses VPN/proxy routing, the outbound IP can change. In that case, update the Azure SQL firewall rule or allow the required IP range for development testing.
 
 ## JWT Configuration
 
@@ -101,21 +133,66 @@ The admin password is sensitive and must not be committed.
 
 ## Azure Service Bus Configuration
 
-The API uses Azure Service Bus to publish messages.
+The API and Azure Functions both use Azure Service Bus.
 
-Common API configuration values:
+API configuration:
 
 ```text
 AzureServiceBus:ConnectionString
 AzureServiceBus:OrderCreatedQueueName
-AzureServiceBus:EmailNotificationQueueName
 AzureServiceBus:OrderStatusChangedQueueName
+AzureServiceBus:EmailNotificationQueueName
 ```
 
-The Azure Functions project commonly uses:
+Azure Functions configuration:
 
 ```text
 AzureServiceBusConnection
+AzureServiceBus:ConnectionString
+AzureServiceBus:OrderCreatedQueueName
+AzureServiceBus:OrderStatusChangedQueueName
+AzureServiceBus:EmailNotificationQueueName
+```
+
+`AzureServiceBusConnection` is required by the Service Bus trigger attributes.
+
+`AzureServiceBus:ConnectionString` is required by shared sender services.
+
+Required queue names:
+
+```text
+order-created
+order-status-changed
+email-notification
+```
+
+## Azure Functions Local Configuration Example
+
+`OrderSystem.AzureFunctions/local.settings.json` should contain local values similar to:
+
+```json
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "<storage-connection-string>",
+    "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
+
+    "SqlConnectionString": "<sql-connection-string>",
+    "ConnectionStrings:SQLConnection": "<sql-connection-string>",
+
+    "AzureServiceBusConnection": "<service-bus-connection-string>",
+    "AzureServiceBus:ConnectionString": "<service-bus-connection-string>",
+
+    "AzureServiceBus:OrderCreatedQueueName": "order-created",
+    "AzureServiceBus:OrderStatusChangedQueueName": "order-status-changed",
+    "AzureServiceBus:EmailNotificationQueueName": "email-notification",
+
+    "CommunicationServices:ConnectionString": "<communication-services-connection-string>",
+    "CommunicationServices:SenderAddress": "<sender-email-address>",
+
+    "FulfillmentAlertEmail": "<admin-alert-email>"
+  }
+}
 ```
 
 ## Durable Functions Storage
@@ -200,7 +277,7 @@ Supabase:SecretKey
 Recommended local run order:
 
 ```text
-1. Start SQL Server.
+1. Start SQL Server or confirm Azure SQL Database access.
 2. Confirm Azure Service Bus queues exist.
 3. Confirm Azure Storage is available for Durable Functions.
 4. Start OrderSystem API.
@@ -209,6 +286,7 @@ Recommended local run order:
 7. Create or log in with a user.
 8. Create an order.
 9. Watch the queue/function processing.
+10. Verify order data and email history in SQL.
 ```
 
 ## Expected Full Happy Path Test
@@ -227,6 +305,7 @@ Recommended local run order:
 11. Move order through Preparing, ReadyForShipment, Shipped, Delivered.
 12. Confirm email messages are processed.
 13. Confirm status history and email history endpoints return data.
+14. Confirm the records are visible in the configured SQL database.
 ```
 
 ## Expected Payment Failure Test
@@ -265,9 +344,51 @@ The API exposes:
 GET /health
 ```
 
-Use this endpoint to verify important runtime dependencies and configuration.
+Use this endpoint to verify important runtime dependencies.
+
+The health check validates the currently configured SQL database and Service Bus access.
+
+If the API connection string points to LocalDB, the health check validates LocalDB.
+
+If the API connection string points to Azure SQL Database, the health check validates Azure SQL Database.
 
 ## Common Local Problems
+
+### API can connect to Azure SQL but Functions cannot find the order
+
+This usually means the API and Functions are using different SQL connection strings.
+
+Check:
+
+```text
+ConnectionStrings:SQLConnection
+SqlConnectionString
+ConnectionStrings:SQLConnection in local.settings.json
+```
+
+Both runtime projects must point to the same database.
+
+### Azure SQL firewall blocks local execution
+
+Error shape:
+
+```text
+Client with IP address '<ip>' is not allowed to access the server.
+```
+
+Fix:
+
+```text
+Azure Portal
+-> SQL servers
+-> <server>
+-> Networking
+-> Firewall rules
+-> Add current client IP address
+-> Save
+```
+
+If the IP changes often, the machine is probably behind VPN/proxy routing.
 
 ### Azure Functions does not process messages
 
@@ -280,6 +401,19 @@ queue existence
 Function App startup logs
 message dead-letter count
 ```
+
+### Function receives Service Bus message but fails sending another message
+
+Check that Functions configuration contains:
+
+```text
+AzureServiceBus:ConnectionString
+AzureServiceBus:OrderCreatedQueueName
+AzureServiceBus:OrderStatusChangedQueueName
+AzureServiceBus:EmailNotificationQueueName
+```
+
+The trigger connection and sender connection are separate config needs.
 
 ### Durable workflow does not start
 
@@ -305,6 +439,24 @@ EmailNotificationFunction logs
 email notification history
 ```
 
+### Status emails are skipped
+
+Check the email history table.
+
+Status email messages must set their own `EmailType`.
+
+Expected email types:
+
+```text
+PaymentConfirmation
+Preparing
+ReadyForShipment
+Shipped
+Delivered
+```
+
+If `EmailType` is missing, the email processor treats the message as `PaymentConfirmation`.
+
 ### AI assistant does not return useful answers
 
 Check:
@@ -325,6 +477,7 @@ Do not commit real values for:
 ```text
 SQLConnection
 SqlConnectionString
+ConnectionStrings:SQLConnection
 Jwt:Key
 AdminUser:Password
 AzureServiceBus:ConnectionString
@@ -358,16 +511,16 @@ Use this structure:
 
 ```text
 appsettings.json
-  → safe defaults and non-secret configuration shape
+  -> safe defaults and non-secret configuration shape
 
 appsettings.Development.json
-  → local API secrets, ignored by git
+  -> local API secrets, ignored by git
 
 local.settings.json
-  → local Azure Functions secrets, ignored by git
+  -> local Azure Functions secrets, ignored by git
 
 environment variables
-  → preferred for deployed environments
+  -> preferred for deployed environments
 ```
 
 ## Before Sharing the Project

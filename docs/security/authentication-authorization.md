@@ -160,3 +160,61 @@ The Supabase secret key is backend-only and must not be exposed to client applic
 - Always reload important business state from SQL Server.
 - Enforce ownership checks before returning order data.
 - Apply the same access rules to AI endpoints as to normal API endpoints.
+
+## Azure Secret Handling
+
+Local development can use ignored local files:
+
+```text
+appsettings.Development.json
+local.settings.json
+```
+
+Deployed environments should use Azure App Service and Function App configuration.
+
+Important deployed secret/config keys include:
+
+```text
+ConnectionStrings__SQLConnection
+SqlConnectionString
+AzureServiceBusConnection
+AzureServiceBus__ConnectionString
+AzureWebJobsStorage
+CommunicationServices__ConnectionString
+Jwt__Key
+AdminUser__Password
+OpenAI__ApiKey
+Supabase__SecretKey
+ApplicationInsights__ConnectionString
+```
+
+These values must not be committed to source control.
+
+For a later production-ready setup, secrets should be moved to Azure Key Vault and accessed through Managed Identity.
+
+## Managed Identity Direction
+
+Managed Identity can reduce or remove the need for connection strings and access keys in application configuration.
+
+Possible future usage:
+
+```text
+API App Service managed identity
+Function App managed identity
+Azure SQL Entra authentication
+Service Bus RBAC roles
+Key Vault secret access
+```
+
+Recommended Service Bus role examples:
+
+```text
+API sending messages              -> Azure Service Bus Data Sender
+Functions receiving messages      -> Azure Service Bus Data Receiver
+Functions sending follow-up mails -> Azure Service Bus Data Sender
+Dead-letter inspection/retry      -> Azure Service Bus Data Receiver
+```
+
+For the first working deployment, SQL authentication and connection strings are acceptable.
+
+For a stronger production setup, prefer Managed Identity and least-privilege RBAC.
