@@ -1,4 +1,6 @@
-﻿using Azure.Messaging.ServiceBus;
+﻿using Azure.Core;
+using Azure.Identity;
+using Azure.Messaging.ServiceBus;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -31,9 +33,25 @@ public static class AzureFunctionsDependencyInjection
             configuration["AzureServiceBus:ConnectionString"]
             ?? configuration["AzureServiceBusConnection"];
 
-        if (string.IsNullOrWhiteSpace(serviceBusConnectionString))
+        var serviceBusFullyQualifiedNamespace =
+            configuration["AzureServiceBus:FullyQualifiedNamespace"]
+            ?? configuration["AzureServiceBusConnection:fullyQualifiedNamespace"];
+
+        var managedIdentityClientId =
+            configuration["AzureServiceBus:ManagedIdentityClientId"]
+            ?? configuration["AzureServiceBusConnection:clientId"]
+            ?? configuration["AZURE_CLIENT_ID"];
+
+        TokenCredential CreateCredential()
         {
-            throw new InvalidOperationException("AzureServiceBusConnection is missing.");
+            var options = new DefaultAzureCredentialOptions();
+
+            if (!string.IsNullOrWhiteSpace(managedIdentityClientId))
+            {
+                options.ManagedIdentityClientId = managedIdentityClientId;
+            }
+
+            return new DefaultAzureCredential(options);
         }
 
         services.AddDbContext<AppDbContext>(options =>
@@ -41,10 +59,35 @@ public static class AzureFunctionsDependencyInjection
             options.UseSqlServer(sqlConnectionString);
         });
 
-        services.AddSingleton(_ => new ServiceBusClient(
-            serviceBusConnectionString,
-            new ServiceBusClientOptions { TransportType = ServiceBusTransportType.AmqpWebSockets }
-        ));
+        services.AddSingleton(_ =>
+        {
+            if (!string.IsNullOrWhiteSpace(serviceBusConnectionString))
+            {
+                return new ServiceBusClient(
+                    serviceBusConnectionString,
+                    new ServiceBusClientOptions
+                    {
+                        TransportType = ServiceBusTransportType.AmqpWebSockets,
+                    }
+                );
+            }
+
+            if (string.IsNullOrWhiteSpace(serviceBusFullyQualifiedNamespace))
+            {
+                throw new InvalidOperationException(
+                    "Either AzureServiceBus:ConnectionString, AzureServiceBusConnection or AzureServiceBus:FullyQualifiedNamespace must be configured."
+                );
+            }
+
+            return new ServiceBusClient(
+                serviceBusFullyQualifiedNamespace,
+                CreateCredential(),
+                new ServiceBusClientOptions
+                {
+                    TransportType = ServiceBusTransportType.AmqpWebSockets,
+                }
+            );
+        });
 
         services.AddScoped<IOrderRepository, OrderRepository>();
         services.AddScoped<IOrderStatusHistoryRepository, OrderStatusHistoryRepository>();
