@@ -174,3 +174,115 @@ Use local development configuration files, environment variables, or platform-le
 This project is intended as a portfolio and learning backend system.
 
 It intentionally demonstrates several production-style backend concepts in a compact solution while keeping the project understandable and extendable.
+
+## Manual Deployment
+
+The solution has two deployable parts:
+
+```text
+OrderSystem                -> ASP.NET Core Web API
+OrderSystem.AzureFunctions -> Azure Functions app
+OrderSystem.Shared         -> shared code
+```
+
+### API
+
+The API is deployed to an Azure App Service.
+
+Before publishing, build the API locally:
+
+```powershell
+dotnet build .\OrderSystem\OrderSystem.csproj -c Release
+```
+
+Then publish the `OrderSystem` project from Visual Studio using the configured App Service publish profile.
+
+The API uses Azure SQL with Managed Identity, so the SQL connection string should not contain a username or password. It should use:
+
+```text
+Authentication=Active Directory Managed Identity
+```
+
+### Azure Functions
+
+The Function App is deployed separately to Azure.
+
+Manual deployment is done from Azure Cloud Shell using Azure Functions Core Tools.
+
+Only these projects are required for the Functions deployment:
+
+```text
+OrderSystem.AzureFunctions
+OrderSystem.Shared
+```
+
+The main API project, `OrderSystem`, is not required.
+
+Create a clean deployment package locally from the solution root:
+
+```powershell
+Remove-Item .\functions-only-source -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item .\functions-only-source.zip -Force -ErrorAction SilentlyContinue
+
+New-Item -ItemType Directory -Path .\functions-only-source
+
+robocopy .\OrderSystem.AzureFunctions .\functions-only-source\OrderSystem.AzureFunctions /E /XD bin obj .vs Properties\PublishProfiles Properties\ServiceDependencies /XF local.settings.json *.user *.suo
+robocopy .\OrderSystem.Shared .\functions-only-source\OrderSystem.Shared /E /XD bin obj .vs /XF local.settings.json *.user *.suo
+
+Compress-Archive -Path .\functions-only-source\* -DestinationPath .\functions-only-source.zip -Force
+```
+
+Upload `functions-only-source.zip` to Azure Cloud Shell, then run:
+
+```bash
+rm -rf functions-only-source
+unzip -q functions-only-source.zip -d functions-only-source
+cd functions-only-source
+chmod -R u+rwX .
+
+find . -maxdepth 3 -name "*.csproj"
+```
+
+Expected projects:
+
+```text
+./OrderSystem.AzureFunctions/OrderSystem.AzureFunctions.csproj
+./OrderSystem.Shared/OrderSystem.Shared.csproj
+```
+
+Then build and publish the Function App:
+
+```bash
+cd ~/functions-only-source/OrderSystem.AzureFunctions
+
+dotnet build OrderSystem.AzureFunctions.csproj -c Release
+
+func azure functionapp publish <function-app-name> --dotnet-isolated --dotnet-version 8.0
+```
+
+After publishing, restart the Function App:
+
+```bash
+az functionapp restart -g <resource-group-name> -n <function-app-name>
+```
+
+### Managed Identity
+
+Azure SQL and Azure Service Bus are accessed through Managed Identity.
+
+The Function App should not use a Service Bus connection string. It should use identity-based settings such as:
+
+```text
+<service-bus-connection-prefix>__fullyQualifiedNamespace
+<service-bus-connection-prefix>__clientId
+```
+
+The Function App managed identity requires the necessary Service Bus RBAC roles, for example:
+
+```text
+Azure Service Bus Data Receiver
+Azure Service Bus Data Sender
+```
+
+If the API can access Azure SQL and the Function App can process Service Bus messages without connection strings, the Managed Identity setup is working correctly.
+
