@@ -38,6 +38,14 @@ public class OrderStatusChangedFunction
     {
         var body = message.Body.ToString();
 
+        _logger.LogInformation(
+            "OrderStatusChangedFunction triggered. MessageId: {MessageId}, SequenceNumber: {SequenceNumber}, DeliveryCount: {DeliveryCount}, Body: {Body}",
+            message.MessageId,
+            message.SequenceNumber,
+            message.DeliveryCount,
+            body
+        );
+
         var statusChangedMessage = JsonSerializer.Deserialize<OrderStatusChangedMessage>(
             body,
             new JsonSerializerOptions { PropertyNameCaseInsensitive = true }
@@ -158,12 +166,14 @@ public class OrderStatusChangedFunction
         }
         catch (Exception exception)
         {
-            _logger.LogWarning(
+            _logger.LogError(
                 exception,
                 "Fulfillment workflow could not be started. OrderId: {OrderId}, InstanceId: {InstanceId}",
                 message.OrderId,
                 instanceId
             );
+
+            throw;
         }
     }
 
@@ -199,12 +209,14 @@ public class OrderStatusChangedFunction
         }
         catch (Exception exception)
         {
-            _logger.LogWarning(
+            _logger.LogError(
                 exception,
                 "Fulfillment workflow event could not be raised. OrderId: {OrderId}, Status: {Status}",
                 message.OrderId,
                 message.CurrentStatus
             );
+
+            throw;
         }
     }
 
