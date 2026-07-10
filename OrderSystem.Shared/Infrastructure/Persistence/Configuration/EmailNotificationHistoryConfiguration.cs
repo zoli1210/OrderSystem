@@ -35,11 +35,6 @@ public class EmailNotificationHistoryConfiguration
         builder.HasIndex(x => x.Status);
         builder.HasIndex(x => x.CreatedAtUtc);
 
-        builder.HasIndex(x => new
-        {
-            x.OrderId,
-            x.EmailType,
-            x.Status,
-        });
+        builder.HasIndex(x => new { x.OrderId, x.EmailType }).IsUnique().HasFilter("[Status] = 2");
     }
 }

@@ -21,7 +21,7 @@ public class EmailNotificationHistoryRepository : IEmailNotificationHistoryRepos
         await _dbContext.EmailNotificationHistories.AddAsync(history, cancellationToken);
     }
 
-    public async Task<bool> ExistsSentAsync(
+    public async Task<bool> ExistsSentEmailForOrderAsync(
         Guid orderId,
         string emailType,
         CancellationToken cancellationToken

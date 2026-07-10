@@ -118,13 +118,24 @@ public class PaymentProcessor : IPaymentProcessor
                     cancellationToken
                 );
 
+                var orderReference = order.Id.ToString("N")[..8].ToUpperInvariant();
+
                 await _emailMessageSender.SendEmailNotificationAsync(
                     new EmailNotificationMessage
                     {
                         OrderId = order.Id,
                         CustomerEmail = order.CustomerEmail,
-                        Subject = "Order payment successful",
-                        Body = $"Your order {order.Id} has been paid successfully.",
+                        Subject = $"Order #{orderReference} payment successful",
+                        Body = $"""
+                        Hi,
+
+                        Your order payment was successful.
+
+                        Order ID: {order.Id}
+                        Amount: {order.TotalAmount} {order.Currency}
+
+                        Thank you for your order.
+                        """,
                         EmailType = "PaymentConfirmation",
                     },
                     cancellationToken

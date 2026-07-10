@@ -55,7 +55,7 @@ public class EmailProcessor : IEmailProcessor
             );
         }
 
-        var alreadySent = await _emailHistoryRepository.ExistsSentAsync(
+        var alreadySent = await _emailHistoryRepository.ExistsSentEmailForOrderAsync(
             emailMessage.OrderId,
             emailMessage.EmailType,
             cancellationToken
@@ -64,9 +64,11 @@ public class EmailProcessor : IEmailProcessor
         if (alreadySent)
         {
             _logger.LogWarning(
-                "Email sending skipped because this email type was already sent. OrderId: {OrderId}, EmailType: {EmailType}",
+                "Email sending skipped because this email type was already sent for this order. OrderId: {OrderId}, Email: {Email}, EmailType: {EmailType}, Subject: {Subject}",
                 emailMessage.OrderId,
-                emailMessage.EmailType
+                emailMessage.CustomerEmail,
+                emailMessage.EmailType,
+                emailMessage.Subject
             );
 
             return;
@@ -97,11 +99,12 @@ public class EmailProcessor : IEmailProcessor
 
             await _orderRepository.SaveChangesAsync(cancellationToken);
 
-            _logger.LogInformation(
-                "Email notification processed. OrderId: {OrderId}, Email: {Email}, EmailType: {EmailType}",
+            _logger.LogWarning(
+                "Email notification processed. OrderId: {OrderId}, Email: {Email}, EmailType: {EmailType}, Subject: {Subject}",
                 emailMessage.OrderId,
                 emailMessage.CustomerEmail,
-                emailMessage.EmailType
+                emailMessage.EmailType,
+                emailMessage.Subject
             );
         }
         catch (Exception exception)

@@ -6,7 +6,11 @@ public interface IEmailNotificationHistoryRepository
 {
     Task AddAsync(EmailNotificationHistory history, CancellationToken cancellationToken);
 
-    Task<bool> ExistsSentAsync(Guid orderId, string emailType, CancellationToken cancellationToken);
+    Task<bool> ExistsSentEmailForOrderAsync(
+        Guid orderId,
+        string emailType,
+        CancellationToken cancellationToken
+    );
 
     Task<IReadOnlyList<EmailNotificationHistory>> GetByOrderIdAsync(
         Guid orderId,

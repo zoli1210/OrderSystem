@@ -7,11 +7,13 @@ public class OrderStatusEmailProcessorService : IOrderStatusEmailProcessor
 {
     public OrderStatusEmailProcessor? BuildEmail(OrderStatusChangedMessage message)
     {
+        var orderReference = message.OrderId.ToString("N")[..8].ToUpperInvariant();
+
         return message.CurrentStatus switch
         {
             OrderStatus.Preparing => new OrderStatusEmailProcessor
             {
-                Subject = "Your order is being prepared",
+                Subject = $"Order #{orderReference} is being prepared",
                 EmailType = "Preparing",
                 Body = $"""
                     Hi,
@@ -26,7 +28,7 @@ public class OrderStatusEmailProcessorService : IOrderStatusEmailProcessor
 
             OrderStatus.ReadyForShipment => new OrderStatusEmailProcessor
             {
-                Subject = "Your order is ready for shipment",
+                Subject = $"Order #{orderReference} is ready for shipment",
                 EmailType = "ReadyForShipment",
                 Body = $"""
                     Hi,
@@ -41,7 +43,7 @@ public class OrderStatusEmailProcessorService : IOrderStatusEmailProcessor
 
             OrderStatus.Shipped => new OrderStatusEmailProcessor
             {
-                Subject = "Your order has been shipped",
+                Subject = $"Order #{orderReference} has been shipped",
                 EmailType = "Shipped",
                 Body = $"""
                     Hi,
@@ -57,7 +59,7 @@ public class OrderStatusEmailProcessorService : IOrderStatusEmailProcessor
 
             OrderStatus.Delivered => new OrderStatusEmailProcessor
             {
-                Subject = "Your order has been delivered",
+                Subject = $"Order #{orderReference} has been delivered",
                 EmailType = "Delivered",
                 Body = $"""
                     Hi,

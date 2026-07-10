@@ -20,7 +20,13 @@ public static class PersistenceDependencyInjection
 
         services.AddDbContext<AppDbContext>(options =>
         {
-            options.UseSqlServer(connectionString);
+            options.UseSqlServer(
+                connectionString,
+                sqlOptions =>
+                    sqlOptions.MigrationsAssembly(
+                        typeof(PersistenceDependencyInjection).Assembly.FullName
+                    )
+            );
         });
 
         services.AddScoped<IOrderRepository, OrderRepository>();
