@@ -18,11 +18,15 @@ public class ExceptionMiddleware
         }
         catch (Exception ex)
         {
-            await HandleException(
-                context,
-                "Internal server error",
-                HttpStatusCode.InternalServerError
-            );
+            var (message, statusCode) = ex switch
+            {
+                UnauthorizedAccessException => ("Forbidden", HttpStatusCode.Forbidden),
+                InvalidOperationException => (ex.Message, HttpStatusCode.BadRequest),
+                ArgumentException => (ex.Message, HttpStatusCode.BadRequest),
+                _ => ("Internal server error", HttpStatusCode.InternalServerError),
+            };
+
+            await HandleException(context, message, statusCode);
         }
     }
 

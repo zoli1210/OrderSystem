@@ -105,6 +105,7 @@ public class OrdersController : ControllerBase
     }
 
     [HttpPatch("{orderId:guid}/status")]
+    [Authorize(Roles = AuthRoles.Admin)]
     public async Task<IActionResult> UpdateStatus(
         Guid orderId,
         UpdateOrderStatusRequest request,
