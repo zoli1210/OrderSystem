@@ -2,8 +2,8 @@
 using Microsoft.Extensions.Logging;
 using OrderSystem.Domain.Entities;
 using OrderSystem.Infrastructure.Messaging.Messages;
-using OrderSystem.Infrastructure.Persistence.Repositories;
 using OrderSystem.Modules.Email.Services;
+using OrderSystem.Repository.Repositories;
 
 namespace OrderSystem.AzureFunctions.Services;
 

@@ -4,8 +4,8 @@ using System.Text;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using OrderSystem.Modules.Auth.Domain;
 using OrderSystem.Modules.Auth.DTOs;
+using OrderSystem.Repository.Persistence.Identity;
 
 namespace OrderSystem.Modules.Auth.Services;
 

@@ -3,17 +3,20 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using OrderSystem.Repository.Persistence;
 
 #nullable disable
 
-namespace OrderSystem.Migrations
+namespace OrderSystem.Repository.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260612111117_AddEmailTypeToEmailNotificationHistory")]
+    partial class AddEmailTypeToEmailNotificationHistory
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -209,9 +212,7 @@ namespace OrderSystem.Migrations
 
                     b.HasIndex("Status");
 
-                    b.HasIndex("OrderId", "EmailType")
-                        .IsUnique()
-                        .HasFilter("[Status] = 2");
+                    b.HasIndex("OrderId", "EmailType", "Status");
 
                     b.ToTable("EmailNotificationHistories");
                 });

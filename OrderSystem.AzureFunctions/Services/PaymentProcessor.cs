@@ -4,8 +4,8 @@ using OrderSystem.Domain.Entities;
 using OrderSystem.Domain.Enums;
 using OrderSystem.Infrastructure.Messaging;
 using OrderSystem.Infrastructure.Messaging.Messages;
-using OrderSystem.Infrastructure.Persistence.Repositories;
 using OrderSystem.Modules.Payments.Services;
+using OrderSystem.Repository.Repositories;
 
 namespace OrderSystem.AzureFunctions.Services;
 

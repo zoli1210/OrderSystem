@@ -2,8 +2,8 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.IdentityModel.Tokens;
-using OrderSystem.Infrastructure.Persistence;
-using OrderSystem.Modules.Auth.Domain;
+using OrderSystem.Repository.Persistence;
+using OrderSystem.Repository.Persistence.Identity;
 
 namespace OrderSystem.Infrastructure.DependencyInjection;
 

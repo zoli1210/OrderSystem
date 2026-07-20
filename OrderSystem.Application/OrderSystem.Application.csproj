@@ -1,0 +1,12 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\OrderSystem.Infrastructure\OrderSystem.Infrastructure.csproj" />
+    <ProjectReference Include="..\OrderSystem.Repository\OrderSystem.Repository.csproj" />
+  </ItemGroup>
+</Project>

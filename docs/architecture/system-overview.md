@@ -302,7 +302,7 @@ For example, code inside `OrderSystem.Shared` can still use namespaces such as:
 
 ```text
 OrderSystem.Domain.Entities
-OrderSystem.Infrastructure.Persistence
+OrderSystem.Repository.Persistence
 OrderSystem.Infrastructure.Messaging
 OrderSystem.Modules.Email.Services
 OrderSystem.Modules.Payments.Services

@@ -8,6 +8,7 @@ using OrderSystem.Infrastructure.DependencyInjection;
 using OrderSystem.Modules.AI.Seed;
 using OrderSystem.Modules.Auth.Seed;
 using OrderSystem.Modules.Orders.Validators;
+using OrderSystem.Repository.DependencyInjection;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -58,7 +59,7 @@ builder.Services.AddFluentValidationAutoValidation();
 builder.Services.AddValidatorsFromAssemblyContaining<CreateOrderRequestValidator>();
 
 // Project services
-builder.Services.AddPersistence(builder.Configuration);
+builder.Services.AddRepository(builder.Configuration);
 builder.Services.AddApplicationServices();
 builder.Services.AddMessaging(builder.Configuration);
 builder.Services.AddAuth(builder.Configuration);

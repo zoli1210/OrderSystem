@@ -3,17 +3,20 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using OrderSystem.Repository.Persistence;
 
 #nullable disable
 
-namespace OrderSystem.Migrations
+namespace OrderSystem.Repository.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260520140519_AddEmailNotificationHistory")]
+    partial class AddEmailNotificationHistory
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -168,13 +171,6 @@ namespace OrderSystem.Migrations
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("EmailType")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
-                        .HasDefaultValue("Legacy");
-
                     b.Property<string>("ErrorMessage")
                         .HasMaxLength(2000)
                         .HasColumnType("nvarchar(2000)");
@@ -208,10 +204,6 @@ namespace OrderSystem.Migrations
                     b.HasIndex("OrderId");
 
                     b.HasIndex("Status");
-
-                    b.HasIndex("OrderId", "EmailType")
-                        .IsUnique()
-                        .HasFilter("[Status] = 2");
 
                     b.ToTable("EmailNotificationHistories");
                 });
@@ -252,26 +244,11 @@ namespace OrderSystem.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
-                    b.Property<DateTime?>("DeliveredAtUtc")
-                        .HasColumnType("datetime2");
-
                     b.Property<string>("Description")
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
                     b.Property<DateTime?>("EmailSentAtUtc")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime?>("PreparationStartedAtUtc")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime?>("ReadyForShipmentAtUtc")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime?>("ReturnedAtUtc")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime?>("ShippedAtUtc")
                         .HasColumnType("datetime2");
 
                     b.Property<int>("Status")
@@ -280,9 +257,6 @@ namespace OrderSystem.Migrations
                     b.Property<decimal>("TotalAmount")
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
-
-                    b.Property<string>("TrackingNumber")
-                        .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime?>("UpdatedAtUtc")
                         .HasColumnType("datetime2");
@@ -312,9 +286,6 @@ namespace OrderSystem.Migrations
 
                     b.Property<int>("FromStatus")
                         .HasColumnType("int");
-
-                    b.Property<string>("Note")
-                        .HasColumnType("nvarchar(max)");
 
                     b.Property<Guid>("OrderId")
                         .HasColumnType("uniqueidentifier");

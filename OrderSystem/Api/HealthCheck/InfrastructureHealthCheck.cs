@@ -1,7 +1,7 @@
 ﻿using Azure.Messaging.ServiceBus.Administration;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
-using OrderSystem.Infrastructure.Persistence;
+using OrderSystem.Repository.Persistence;
 
 namespace OrderSystem.Api.HealthCheck;
 

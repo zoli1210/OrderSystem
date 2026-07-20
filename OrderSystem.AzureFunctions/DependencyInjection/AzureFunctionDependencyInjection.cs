@@ -1,15 +1,14 @@
 ﻿using Azure.Core;
 using Azure.Identity;
 using Azure.Messaging.ServiceBus;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using OrderSystem.AzureFunctions.Services;
 using OrderSystem.Infrastructure.Messaging;
-using OrderSystem.Infrastructure.Persistence;
-using OrderSystem.Infrastructure.Persistence.Repositories;
 using OrderSystem.Modules.Email.Services;
 using OrderSystem.Modules.Payments.Services;
+using OrderSystem.Repository.DependencyInjection;
+using OrderSystem.Repository.Repositories;
 
 namespace OrderSystem.AzureFunctions.DependencyInjection;
 
@@ -54,10 +53,7 @@ public static class AzureFunctionsDependencyInjection
             return new DefaultAzureCredential(options);
         }
 
-        services.AddDbContext<AppDbContext>(options =>
-        {
-            options.UseSqlServer(sqlConnectionString);
-        });
+        services.AddRepository(configuration);
 
         services.AddSingleton(_ =>
         {
@@ -88,13 +84,6 @@ public static class AzureFunctionsDependencyInjection
                 }
             );
         });
-
-        services.AddScoped<IOrderRepository, OrderRepository>();
-        services.AddScoped<IOrderStatusHistoryRepository, OrderStatusHistoryRepository>();
-        services.AddScoped<
-            IEmailNotificationHistoryRepository,
-            EmailNotificationHistoryRepository
-        >();
 
         services.AddScoped<IPaymentService, PaymentService>();
         services.AddScoped<IPaymentProcessor, PaymentProcessor>();

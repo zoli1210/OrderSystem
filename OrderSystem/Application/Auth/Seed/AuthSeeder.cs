@@ -1,5 +1,5 @@
 ﻿using Microsoft.AspNetCore.Identity;
-using OrderSystem.Modules.Auth.Domain;
+using OrderSystem.Repository.Persistence.Identity;
 
 namespace OrderSystem.Modules.Auth.Seed;
 
