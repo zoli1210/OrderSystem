@@ -1,8 +1,8 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using OrderSystem.Modules.Auth;
-using OrderSystem.Modules.Auth.DTOs;
-using OrderSystem.Modules.Auth.Services;
+using OrderSystem.Authentication.Application;
+using OrderSystem.Authentication.Authorization;
+using OrderSystem.Authentication.Contracts;
 
 namespace OrderSystem.Api.Controllers;
 

@@ -304,8 +304,8 @@ For example, code inside `OrderSystem.Shared` can still use namespaces such as:
 OrderSystem.Domain.Entities
 OrderSystem.Repository.Persistence
 OrderSystem.Infrastructure.Messaging
-OrderSystem.Modules.Email.Services
-OrderSystem.Modules.Payments.Services
+OrderSystem.Infrastructure.Payments
+OrderSystem.Infrastructure.Payments
 ```
 
 The physical project is shared, but the logical namespace can remain aligned with the existing architecture.

@@ -3,12 +3,13 @@ using Azure.Identity;
 using Azure.Messaging.ServiceBus;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using OrderSystem.AzureFunctions.Services;
+using OrderSystem.AzureFunctions.Emails.Services;
+using OrderSystem.AzureFunctions.Orders.Services;
+using OrderSystem.AzureFunctions.Payments.Services;
+using OrderSystem.Infrastructure.Email;
 using OrderSystem.Infrastructure.Messaging;
-using OrderSystem.Modules.Email.Services;
-using OrderSystem.Modules.Payments.Services;
+using OrderSystem.Infrastructure.Payments;
 using OrderSystem.Repository.DependencyInjection;
-using OrderSystem.Repository.Repositories;
 
 namespace OrderSystem.AzureFunctions.DependencyInjection;
 

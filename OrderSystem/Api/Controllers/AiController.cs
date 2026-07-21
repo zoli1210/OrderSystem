@@ -3,8 +3,8 @@ using Microsoft.AspNetCore.Mvc;
 using OrderSystem.Application.AI.Documents;
 using OrderSystem.Application.AI.Knowledge;
 using OrderSystem.Application.AI.OrderExplanation;
+using OrderSystem.Authentication.Authorization;
 using OrderSystem.Modules.AI.DTOs;
-using OrderSystem.Modules.Auth;
 
 namespace OrderSystem.Api.Controllers;
 

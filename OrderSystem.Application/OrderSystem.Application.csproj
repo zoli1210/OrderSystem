@@ -6,7 +6,16 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="FluentValidation" Version="11.11.0" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\OrderSystem.Infrastructure\OrderSystem.Infrastructure.csproj" />
     <ProjectReference Include="..\OrderSystem.Repository\OrderSystem.Repository.csproj" />
+    <ProjectReference Include="..\OrderSystem.Shared\OrderSystem.Shared.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Services\AI\" />
   </ItemGroup>
 </Project>

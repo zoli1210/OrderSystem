@@ -4,10 +4,12 @@ using FluentValidation.AspNetCore;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.OpenApi.Models;
 using OrderSystem.Api.HealthCheck;
+using OrderSystem.Application.Orders.Validators;
+using OrderSystem.Authentication.DependencyInjection;
+using OrderSystem.Authentication.Seed;
+using OrderSystem.DependencyInjection;
 using OrderSystem.Infrastructure.DependencyInjection;
 using OrderSystem.Modules.AI.Seed;
-using OrderSystem.Modules.Auth.Seed;
-using OrderSystem.Modules.Orders.Validators;
 using OrderSystem.Repository.DependencyInjection;
 
 var builder = WebApplication.CreateBuilder(args);

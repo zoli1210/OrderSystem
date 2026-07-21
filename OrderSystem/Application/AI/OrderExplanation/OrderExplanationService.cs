@@ -2,10 +2,10 @@
 using Microsoft.Extensions.Options;
 using OrderSystem.Application.AI.Providers.OpenAi;
 using OrderSystem.Application.AI.Providers.Supabase;
+using OrderSystem.Authentication.Application;
 using OrderSystem.Domain.Entities;
 using OrderSystem.Infrastructure.Options;
 using OrderSystem.Modules.AI.DTOs;
-using OrderSystem.Modules.Auth.Services;
 using OrderSystem.Repository.Repositories;
 
 namespace OrderSystem.Application.AI.OrderExplanation;

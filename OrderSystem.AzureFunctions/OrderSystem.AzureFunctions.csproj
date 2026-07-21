@@ -6,11 +6,6 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
-  <ItemGroup>
-    <None Include="OrderFulfillmentAlertActivity.cs" />
-    <None Include="Services\OrderFulfillmentOrchestrator.cs" />
-    <None Include="StartOrderFulfillmentWorkflowFunction.cs" />
-  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.ApplicationInsights.WorkerService" Version="2.22.0" />
@@ -37,6 +32,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\OrderSystem.Application\OrderSystem.Application.csproj" />
+    <ProjectReference Include="..\OrderSystem.Infrastructure\OrderSystem.Infrastructure.csproj" />
     <ProjectReference Include="..\OrderSystem.Repository\OrderSystem.Repository.csproj" />
     <ProjectReference Include="..\OrderSystem.Shared\OrderSystem.Shared.csproj" />
   </ItemGroup>
@@ -52,6 +48,8 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Folder Include="Common\" />
     <Folder Include="Properties\PublishProfiles\" />
+    <Folder Include="Services\" />
   </ItemGroup>
 </Project>

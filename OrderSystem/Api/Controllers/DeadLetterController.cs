@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using OrderSystem.Authentication.Authorization;
 using OrderSystem.Infrastructure.Messaging;
-using OrderSystem.Modules.Auth;
 
 namespace OrderSystem.Api.Controllers;
 
